@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>inspiration — boards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,700;1,400&family=Hanken+Grotesk:wght@300;400;500&family=Italianno&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bone: #F2EBDF;
+    --sand: #E8DBC1;
+    --ink: #2C2820;
+    --ink-soft: rgba(44, 40, 32, 0.62);
+    --ink-line: rgba(44, 40, 32, 0.14);
+    --acc: #6B7A4F;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-script: 'Italianno', cursive;
+    --font-body: 'Hanken Grotesk', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bone); color: var(--ink);
+    font-family: var(--font-body); font-weight: 300;
+    -webkit-font-smoothing: antialiased; line-height: 1.5;
+  }
+  ::selection { background: rgba(107, 122, 79, 0.25); color: var(--ink); }
+  a { color: inherit; text-decoration: none; }
+
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 56px 28px 120px; }
+
+  /* Top nav */
+  .topnav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 24px; border-bottom: 1px solid var(--ink-line);
+    margin-bottom: 26px;
+  }
+  .topnav h1 {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: clamp(28px, 3.5vw, 44px); letter-spacing: 0.04em;
+    line-height: 1; margin: 0; text-transform: uppercase;
+  }
+  .topnav h1 i {
+    font-family: var(--font-script); font-style: normal; font-weight: 400;
+    color: var(--acc); text-transform: none;
+    font-size: 1.05em; letter-spacing: 0; margin-left: 6px; vertical-align: -0.02em;
+  }
+  .topnav .modes { display: flex; gap: 0; border: 1px solid var(--ink-line); }
+  .topnav .modes a {
+    padding: 10px 16px; font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ink-soft); border-right: 1px solid var(--ink-line);
+  }
+  .topnav .modes a:last-child { border-right: none; }
+  .topnav .modes a.on { background: var(--ink); color: var(--bone); }
+
+  .swatch-strip {
+    height: 12px; margin: 0 0 36px; border: 1px solid var(--ink-line);
+    background: linear-gradient(to right,
+      #6B7A4F 0% 14.28%, #A1A88A 14.28% 28.56%, #E8DBC1 28.56% 42.84%,
+      #C9A87A 42.84% 57.12%, #B26449 57.12% 71.4%, #7A5A4A 71.4% 85.68%,
+      #8FA6A8 85.68% 100%);
+  }
+
+  /* HOME — 4 board tiles */
+  .boards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px;
+  }
+  @media (max-width: 720px) { .boards { grid-template-columns: 1fr; } }
+
+  .board-tile {
+    border: 1px solid var(--ink-line);
+    background: var(--bone);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+    cursor: pointer;
+  }
+  .board-tile:hover { border-color: var(--ink); }
+
+  .board-tile .head {
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid var(--ink-line);
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 14px;
+  }
+  .board-tile .head .name {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: 30px; letter-spacing: 0.02em; line-height: 1;
+    text-transform: uppercase;
+  }
+  .board-tile .head .count {
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ink-soft); white-space: nowrap;
+  }
+  .board-tile .cover {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background: var(--sand);
+    overflow: hidden;
+  }
+  .board-tile .cover img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transition: transform 0.4s ease;
+  }
+  .board-tile:hover .cover img { transform: scale(1.03); }
+  .board-tile .cover::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(20,18,14,0.18) 100%);
+    pointer-events: none;
+  }
+  .board-tile .foot {
+    padding: 14px 22px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ink-soft);
+    border-top: 1px solid var(--ink-line);
+  }
+  .board-tile .foot .open { color: var(--acc); }
+
+  /* BOARD VIEW — single category */
+  .board-head {
+    display: flex; align-items: baseline; gap: 16px;
+    border-bottom: 1px solid var(--ink-line);
+    padding-bottom: 18px; margin-bottom: 28px;
+  }
+  .board-head .back {
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .board-head .back:hover { color: var(--ink); }
+  .board-head .title {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: clamp(28px, 3.5vw, 44px); letter-spacing: 0.04em; line-height: 1;
+    text-transform: uppercase; margin: 0 auto 0 8px;
+  }
+  .board-head .add-btn {
+    background: var(--ink); color: var(--bone); border: none;
+    padding: 10px 18px; font-family: var(--font-body); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer;
+  }
+  .board-head .add-btn:hover { background: var(--acc); }
+
+  /* wall — full embeds inline */
+  .wall { column-count: 3; column-gap: 22px; }
+  @media (max-width: 1080px) { .wall { column-count: 2; } }
+  @media (max-width: 680px)  { .wall { column-count: 1; } }
+
+  .wcard {
+    break-inside: avoid; margin-bottom: 22px;
+    background: var(--bone); border: 1px solid var(--ink-line);
+    transition: border-color 0.15s ease;
+    display: inline-block; width: 100%;
+  }
+  .wcard:hover { border-color: var(--ink); }
+  .wcard .ttag {
+    padding: 11px 13px;
+    font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--ink-soft);
+    border-bottom: 1px solid var(--ink-line);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .wcard .ttag .cat { color: var(--acc); font-weight: 500; }
+  .wcard .ttag .kebab { position: relative; }
+  .wcard .ttag .kebab > button {
+    background: none; border: none; cursor: pointer;
+    color: var(--ink-soft); font-family: var(--font-body);
+    font-size: 18px; padding: 0 6px; line-height: 1; letter-spacing: 0.06em;
+  }
+  .wcard .ttag .kebab > button:hover { color: var(--acc); }
+  .menu {
+    position: absolute; top: calc(100% + 6px); right: 0;
+    background: var(--bone); border: 1px solid var(--ink-line);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    min-width: 200px; z-index: 30; display: none;
+  }
+  .menu.on { display: block; }
+  .menu .group-label {
+    padding: 10px 14px 6px; font-size: 9px; letter-spacing: 0.28em;
+    text-transform: uppercase; color: var(--ink-soft);
+    border-bottom: 1px solid var(--ink-line);
+  }
+  .menu button.opt {
+    display: block; width: 100%; text-align: left;
+    background: none; border: none; padding: 11px 14px;
+    font-family: var(--font-body); font-size: 13px; letter-spacing: 0.02em;
+    color: var(--ink); cursor: pointer; text-transform: none;
+    border-bottom: 1px solid var(--ink-line);
+  }
+  .menu button.opt:last-child { border-bottom: none; }
+  .menu button.opt:hover { background: var(--sand); }
+  .menu button.opt.current { color: var(--ink-soft); cursor: default; }
+  .menu button.opt.current:hover { background: none; }
+  .menu button.danger { color: var(--acc); }
+  .menu button.danger:hover { background: rgba(107,122,79,0.08); }
+  .wcard .embed {
+    background: var(--sand); position: relative; overflow: hidden;
+  }
+  .wcard .embed > blockquote.instagram-media { margin: 0 auto !important; min-width: 0 !important; max-width: 100% !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; }
+  .wcard .embed iframe { width: 100%; border: 0; display: block; }
+  .wcard .embed .yt-wrap { position: relative; width: 100%; padding-top: 177.77%; }
+  .wcard .embed .yt-wrap.landscape { padding-top: 56.25%; }
+  .wcard .embed .yt-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .wcard .embed img { width: 100%; height: auto; display: block; }
+  .wcard .embed .link-card { padding: 28px 22px; display: flex; flex-direction: column; gap: 8px; }
+  .wcard .embed .link-card .url { font-family: var(--font-body); font-size: 13px; color: var(--ink); word-break: break-all; line-height: 1.5; }
+  .wcard .embed .link-card .open { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--acc); text-decoration: none; }
+  .wcard .note {
+    padding: 12px 14px;
+    font-size: 13px; line-height: 1.5; color: var(--ink);
+    border-top: 1px solid var(--ink-line);
+  }
+  .wcard .foot {
+    padding: 10px 14px;
+    font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-soft);
+    border-top: 1px solid var(--ink-line);
+    display: flex; justify-content: space-between;
+  }
+  .wcard .foot a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink-line); }
+
+  /* MODAL with full embed */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(20, 18, 14, 0.78);
+    backdrop-filter: blur(6px); z-index: 100;
+    display: none; align-items: flex-start; justify-content: center;
+    padding: 56px 24px;
+    overflow-y: auto;
+  }
+  .modal-bg.on { display: flex; }
+  .modal {
+    background: var(--bone); border: 1px solid var(--ink-line);
+    width: 100%; max-width: 620px; position: relative;
+  }
+  .modal .mhead {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px; border-bottom: 1px solid var(--ink-line);
+    font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .modal .mclose { background: none; border: none; cursor: pointer; color: var(--ink-soft); font-size: 16px; line-height: 1; padding: 0 6px; }
+  .modal .mclose:hover { color: var(--ink); }
+  .modal .mbody { background: var(--sand); }
+  .modal .mbody > blockquote.instagram-media { margin: 0 auto !important; min-width: 0 !important; max-width: 100% !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; }
+  .modal .mbody iframe { width: 100%; border: 0; display: block; }
+  .modal .mbody .yt-wrap { position: relative; width: 100%; padding-top: 177.77%; }
+  .modal .mbody .yt-wrap.landscape { padding-top: 56.25%; }
+  .modal .mbody .yt-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .modal .mbody img { width: 100%; height: auto; display: block; }
+  .modal .mfoot {
+    padding: 14px 18px;
+    border-top: 1px solid var(--ink-line);
+  }
+  .modal .mfoot .note { font-size: 13px; line-height: 1.55; color: var(--ink); margin-bottom: 10px; }
+  .modal .mfoot .meta {
+    display: flex; justify-content: space-between;
+    font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-soft);
+  }
+  .modal .mfoot .meta a { color: var(--acc); }
+
+  /* INLINE ADD FORM (board view) */
+  .add-form {
+    display: none;
+    background: var(--sand); border: 1px solid var(--ink-line);
+    padding: 22px 24px; margin-bottom: 28px;
+    grid-template-columns: 1fr auto; gap: 14px 16px;
+  }
+  .add-form.on { display: grid; }
+  .add-form .row { display: flex; flex-direction: column; gap: 6px; }
+  .add-form label { font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--ink-soft); }
+  .add-form input, .add-form textarea {
+    background: var(--bone); border: 1px solid var(--ink-line);
+    padding: 11px 13px; font-family: var(--font-body); font-size: 14px;
+    color: var(--ink); border-radius: 0; outline: none; width: 100%;
+  }
+  .add-form textarea { min-height: 56px; resize: vertical; line-height: 1.45; }
+  .add-form .submit {
+    align-self: end; background: var(--ink); color: var(--bone);
+    border: none; padding: 12px 22px; font-family: var(--font-body);
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    cursor: pointer; height: 42px;
+  }
+  .add-form .submit:hover { background: var(--acc); }
+  .err { color: var(--acc); font-size: 12px; grid-column: 1/-1; }
+
+  .empty {
+    text-align: center; padding: 80px 20px;
+    color: var(--ink-soft); font-size: 14px; letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topnav">
+    <a href="./" style="text-decoration:none; color:inherit;"><h1>INSPIRATION <i>board.</i></h1></a>
+    <a href="./" style="font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-soft); text-decoration:none; border:1px solid var(--ink-line); padding:10px 16px;">← all boards</a>
+  </div>
+
+  <div class="swatch-strip" aria-hidden="true"></div>
+
+  <!-- HOME (board tiles) -->
+  <div id="home"></div>
+
+  <!-- BOARD VIEW -->
+  <div id="board" style="display:none;">
+    <div class="board-head">
+      <a href="./" class="back">← all boards</a>
+      <h2 class="title" id="board-title"></h2>
+    </div>
+
+    <div class="wall" id="wall"></div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="mhead"><span id="m-tag">reference post</span><button class="mclose" id="m-close">✕</button></div>
+    <div class="mbody" id="m-body"></div>
+    <div class="mfoot">
+      <div class="note" id="m-note" style="display:none;"></div>
+      <div class="meta"><span id="m-date"></span><a id="m-link" href="#" target="_blank" rel="noreferrer">open original ↗</a></div>
+    </div>
+  </div>
+</div>
+
+<script async src="//www.instagram.com/embed.js"></script>
+<script async src="https://www.tiktok.com/embed.js"></script>
+<script async defer src="//assets.pinterest.com/js/pinit.js"></script>
+
+<script type="module">
+const DATA = './data/items.json';
+const BOARDS = [
+  { key: 'text',    name: 'text style',    cover: 'covers/text.jpg' },
+  { key: 'edit',    name: 'edit / colour', cover: 'covers/edit.jpg' },
+  { key: 'concept', name: 'concept',       cover: 'covers/concept.jpg' },
+  { key: 'general', name: 'general feed',  cover: 'covers/general.jpg' }
+];
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+let allItems = [];
+
+function detectPlatform(url) {
+  try {
+    const u = new URL(url, location.href);
+    const h = u.hostname.replace(/^www\./, '').toLowerCase();
+    const p = u.pathname.toLowerCase();
+    if (/\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(p)) return 'image';
+    if (h.includes('instagram.com')) return 'instagram';
+    if (h.includes('tiktok.com') || h === 'vm.tiktok.com') return 'tiktok';
+    if (h.includes('youtube.com') || h === 'youtu.be') return 'youtube';
+    if (h.includes('pinterest.') || h === 'pin.it') return 'pinterest';
+    if (h.includes('vimeo.com')) return 'vimeo';
+    return 'link';
+  } catch { return 'link'; }
+}
+function ytId(url) { try { const u = new URL(url); if (u.hostname.includes('youtu.be')) return u.pathname.slice(1); if (u.pathname.startsWith('/shorts/')) return u.pathname.split('/')[2]; if (u.pathname.startsWith('/embed/')) return u.pathname.split('/')[2]; return u.searchParams.get('v'); } catch { return null; } }
+function tiktokId(url) { try { const u = new URL(url); const m = u.pathname.match(/\/video\/(\d+)/); return m ? m[1] : null; } catch { return null; } }
+function vimeoId(url) { try { const u = new URL(url); const m = u.pathname.match(/\/(\d+)/); return m ? m[1] : null; } catch { return null; } }
+function escape(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function host(url) { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return 'link'; } }
+function platformLabel(p) { return ({instagram:'instagram', tiktok:'tiktok', youtube:'youtube', vimeo:'vimeo', pinterest:'pinterest', image:'image', link:'link'})[p] || p; }
+function shortPath(url) { try { const u = new URL(url); return (u.pathname.replace(/^\/+|\/+$/g,'') || u.hostname).split('/').slice(0,2).join('/'); } catch { return url; } }
+function fmtDate(iso) { try { return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric' }).toLowerCase(); } catch { return ''; } }
+
+function thumbHTML(item) {
+  const p = detectPlatform(item.url);
+  if (p === 'image') return `<img src="${escape(item.url)}" alt="" loading="lazy" />`;
+  // placeholder card with platform + URL fragment
+  return `<div class="placeholder">
+    <div class="platform">${platformLabel(p)}</div>
+    <div class="domain">${escape(shortPath(item.url))}</div>
+  </div>`;
+}
+
+function embedHTML(item) {
+  // explicit thumbnail override: keep canonical url, render image, link out to url
+  if (item.thumbnail) {
+    return `<a href="${escape(item.url)}" target="_blank" rel="noreferrer"><img src="${escape(item.thumbnail)}" alt="" loading="lazy" /></a>`;
+  }
+  const p = detectPlatform(item.url);
+  if (p === 'image') return `<a href="${escape(item.url)}" target="_blank" rel="noreferrer"><img src="${escape(item.url)}" alt="" /></a>`;
+  if (p === 'instagram') return `<blockquote class="instagram-media" data-instgrm-permalink="${escape(item.url)}" data-instgrm-version="14" style="background:#FFF; border:0; margin:0; max-width:540px; min-width:0; padding:0; width:100%;"></blockquote>`;
+  if (p === 'tiktok') { const id = tiktokId(item.url); return `<blockquote class="tiktok-embed" cite="${escape(item.url)}" ${id ? `data-video-id="${id}"` : ''} style="max-width:605px; min-width:325px; margin:0;"><section></section></blockquote>`; }
+  if (p === 'youtube') { const id = ytId(item.url); if (id) { const isShort = /shorts\//.test(item.url); return `<div class="yt-wrap${isShort ? '' : ' landscape'}"><iframe src="https://www.youtube.com/embed/${id}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>`; } }
+  if (p === 'vimeo') { const id = vimeoId(item.url); if (id) return `<div class="yt-wrap landscape"><iframe src="https://player.vimeo.com/video/${id}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`; }
+  if (p === 'pinterest') return `<div class="pin-wrap"><a data-pin-do="embedPin" data-pin-width="large" href="${escape(item.url)}"></a></div>`;
+  return `<a href="${escape(item.url)}" target="_blank" rel="noreferrer" style="display:block;padding:40px 24px;text-align:center;font-family:var(--font-display);font-style:italic;font-size:18px;color:var(--ink);">${escape(host(item.url))}<br><span style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--acc);">open ↗</span></a>`;
+}
+
+function processEmbeds() {
+  [0, 400, 1500, 3500].forEach(t => setTimeout(() => {
+    try { window.instgrm?.Embeds?.process(); } catch {}
+    try { window.PinUtils?.build(); } catch {}
+  }, t));
+}
+
+// ---- HOME render ----
+function renderHome() {
+  $('#home').style.display = '';
+  $('#board').style.display = 'none';
+  const html = `<div class="boards">${BOARDS.map(b => {
+    const items = allItems.filter(i => i.category === b.key);
+    return `<a class="board-tile" href="board.html?cat=${b.key}">
+      <div class="head">
+        <span class="name">${b.name}</span>
+        <span class="count">${items.length} ref${items.length===1?'':'s'}</span>
+      </div>
+      <div class="cover"><img src="${b.cover}" alt="" loading="lazy" /></div>
+      <div class="foot"><span>${b.name}</span><span class="open">open →</span></div>
+    </a>`;
+  }).join('')}</div>`;
+  $('#home').innerHTML = html;
+}
+
+// ---- BOARD render ----
+function renderBoard(catKey) {
+  const board = BOARDS.find(b => b.key === catKey);
+  if (!board) { renderHome(); return; }
+  $('#home').style.display = 'none';
+  $('#board').style.display = '';
+  $('#board-title').textContent = board.name;
+  const items = allItems.filter(i => i.category === catKey);
+  if (!items.length) { $('#wall').innerHTML = `<div class="empty">nothing in this board yet</div>`; return; }
+  $('#wall').innerHTML = items.map(item => {
+    const p = detectPlatform(item.url);
+    const isPost = !['image', 'link'].includes(p);
+    const refWord = item.label || (isPost ? 'reference post' : 'reference');
+    return `<article class="wcard" data-id="${escape(item.id)}">
+      <div class="ttag">
+        <span>${refWord} · <span class="cat">${board.name}</span></span>
+      </div>
+      <div class="embed">${embedHTML(item)}</div>
+      ${item.note ? `<div class="note">${escape(item.note)}</div>` : ''}
+      <div class="foot">
+        <span>${fmtDate(item.created_at)}</span>
+        <a href="${escape(item.url)}" target="_blank" rel="noreferrer">open original ↗</a>
+      </div>
+    </article>`;
+  }).join('');
+  processEmbeds();
+}
+
+// ---- MODAL ----
+function openModal(item) {
+  const p = detectPlatform(item.url);
+  const isPost = !['image', 'link'].includes(p);
+  $('#m-tag').textContent = `${isPost ? 'reference post' : 'reference'} · ${BOARDS.find(b => b.key === item.category)?.name || item.category}`;
+  $('#m-body').innerHTML = embedHTML(item);
+  if (item.note) { $('#m-note').textContent = item.note; $('#m-note').style.display = ''; } else { $('#m-note').style.display = 'none'; }
+  $('#m-date').textContent = fmtDate(item.created_at);
+  $('#m-link').href = item.url;
+  $('#modal-bg').classList.add('on');
+  document.body.style.overflow = 'hidden';
+  processEmbeds();
+}
+function closeModal() {
+  $('#modal-bg').classList.remove('on');
+  $('#m-body').innerHTML = '';
+  document.body.style.overflow = '';
+}
+$('#m-close').addEventListener('click', closeModal);
+$('#modal-bg').addEventListener('click', e => { if (e.target.id === 'modal-bg') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+async function load() {
+  try {
+    const r = await fetch(DATA, { cache: 'no-store' });
+    const data = await r.json();
+    allItems = (data.items || []).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
+    const cat = new URLSearchParams(location.search).get('cat');
+    if (cat) renderBoard(cat); else renderHome();
+  } catch {
+    $('#home').innerHTML = `<div class="empty">couldn't load</div>`;
+  }
+}
+load();
+</script>
+</body>
+</html>
