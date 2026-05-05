@@ -430,11 +430,32 @@
   </header>
   <div class="swatch-strip" aria-hidden="true"></div>
 
-  <div class="add" style="grid-template-columns: 1fr;">
+  <form class="add" id="add-form" autocomplete="off">
     <div class="row">
-      <label>to add a reference</label>
-      <p style="margin:0; font-size:14px; line-height:1.55; color:var(--ink);">drop the link straight to callie — she'll add it to the right board within the day. (the live add form will be back once we move off the temporary host.)</p>
+      <label for="url">link</label>
+      <input id="url" type="text" placeholder="paste an instagram, tiktok, pinterest, youtube or any url" required />
     </div>
+    <div class="row" style="grid-row: span 2;">
+      <label>what you love</label>
+      <div class="cats" id="cat-chips">
+        <button type="button" class="cat-chip" data-cat="text">text style</button>
+        <button type="button" class="cat-chip" data-cat="edit">edit / colour</button>
+        <button type="button" class="cat-chip" data-cat="concept">concept to shoot</button>
+        <button type="button" class="cat-chip" data-cat="general">general feed</button>
+      </div>
+      <button class="submit" type="submit" id="submit-btn">add reference</button>
+    </div>
+    <div class="row">
+      <label for="note">note (optional)</label>
+      <textarea id="note" placeholder="what pulls you about it — colour, caption rhythm, framing, vibe"></textarea>
+    </div>
+    <div class="err" id="err"></div>
+  </form>
+
+  <div id="sync-bar" style="display:none; padding:10px 14px; margin-bottom:24px; background:var(--sand); border:1px solid var(--ink-line); font-size:12px; letter-spacing:0.04em; color:var(--ink-soft);">
+    <span id="sync-msg">connect github to sync your edits</span>
+    <button id="setup-token" style="margin-left:10px; background:var(--ink); color:var(--bone); border:none; padding:6px 12px; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; cursor:pointer;">connect</button>
+    <button id="clear-token" style="margin-left:6px; background:none; border:none; color:var(--ink-soft); font-size:11px; letter-spacing:0.04em; cursor:pointer; text-decoration:underline;">disconnect</button>
   </div>
 
   <div class="boards" id="boards">
@@ -443,6 +464,8 @@
 </div>
 
 <script type="module">
+import { getToken, setToken, clearToken, putItems, pullItems, REPO } from './lib/sync.js';
+
 const DATA = './data/items.json';
 const BOARDS = [
   { key: 'text',    name: 'text style',    cover: 'covers/text.jpg' },
@@ -452,10 +475,14 @@ const BOARDS = [
 ];
 
 const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const state = { items: [], selectedCat: 'text' };
 
-function renderBoards(items) {
+function escape(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderBoards() {
   $('#boards').innerHTML = BOARDS.map(b => {
-    const count = items.filter(i => i.category === b.key).length;
+    const count = state.items.filter(i => i.category === b.key).length;
     return `<a class="board-tile" href="board.html?cat=${b.key}">
       <div class="head">
         <span class="name">${b.name}</span>
@@ -467,15 +494,114 @@ function renderBoards(items) {
   }).join('');
 }
 
+function renderSyncBar() {
+  const bar = $('#sync-bar');
+  const msg = $('#sync-msg');
+  if (getToken()) {
+    bar.style.display = '';
+    bar.style.background = 'transparent';
+    bar.style.borderColor = 'var(--ink-line)';
+    msg.textContent = '✓ synced to github · changes save to the repo';
+    $('#setup-token').style.display = 'none';
+    $('#clear-token').style.display = '';
+  } else {
+    bar.style.display = '';
+    bar.style.background = 'var(--sand)';
+    msg.textContent = 'connect github to save your edits (one-time setup, ~30 seconds)';
+    $('#setup-token').style.display = '';
+    $('#clear-token').style.display = 'none';
+  }
+}
+
 async function load() {
   try {
-    const r = await fetch(DATA, { cache: 'no-store' });
+    const r = await fetch(DATA + '?t=' + Date.now(), { cache: 'no-store' });
     const data = await r.json();
-    renderBoards(data.items || []);
+    state.items = data.items || [];
+    renderBoards();
+    renderSyncBar();
   } catch {
     $('#boards').innerHTML = `<div class="empty">couldn't load</div>`;
   }
 }
+
+// chips
+$('#cat-chips').addEventListener('click', e => {
+  const btn = e.target.closest('.cat-chip');
+  if (!btn) return;
+  $$('.cat-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.selectedCat = btn.dataset.cat;
+});
+document.querySelector('.cat-chip[data-cat="text"]').classList.add('active');
+
+// token connect / disconnect
+async function promptForToken() {
+  const url = `https://github.com/settings/personal-access-tokens/new?name=dominika-inspo&description=add%20%26%20edit%20inspiration%20board%20entries&scopes=&target_name=callie-rounds-media&repository_ids=`;
+  alert(
+`to enable saving:
+
+1. open: ${url}
+2. under repository access → only select repositories → pick "callie-rounds-media/dominika-inspo"
+3. under repository permissions → contents → read and write
+4. generate token, copy it
+5. paste in the next prompt
+
+(token only stored in your browser)`
+  );
+  window.open(url, '_blank');
+  const t = prompt('paste your github token here:');
+  if (t && t.trim()) {
+    setToken(t.trim());
+    renderSyncBar();
+    alert('connected ✓');
+  }
+}
+$('#setup-token').addEventListener('click', promptForToken);
+$('#clear-token').addEventListener('click', () => {
+  if (confirm('disconnect github sync?')) { clearToken(); renderSyncBar(); }
+});
+
+// add form submit → optimistic update + commit
+$('#add-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#err').textContent = '';
+  const url = $('#url').value.trim();
+  const note = $('#note').value.trim();
+  const cat = state.selectedCat;
+  if (!url) { $('#err').textContent = 'paste a link first'; return; }
+  if (!cat) { $('#err').textContent = 'pick a category'; return; }
+  try { new URL(url); } catch { $('#err').textContent = 'not a valid url'; return; }
+  if (!getToken()) { await promptForToken(); if (!getToken()) { $('#err').textContent = 'connect github first to save'; return; } }
+
+  const btn = $('#submit-btn');
+  btn.disabled = true; btn.textContent = 'saving…';
+
+  const item = {
+    id: 'i_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+    url, note, category: cat,
+    created_at: new Date().toISOString()
+  };
+
+  // optimistic
+  state.items.unshift(item);
+  renderBoards();
+  $('#url').value = ''; $('#note').value = '';
+
+  try {
+    await putItems(state.items, `inspo: add ${cat} reference`);
+    btn.textContent = 'added ✓';
+    setTimeout(() => { btn.textContent = 'add reference'; btn.disabled = false; }, 1200);
+  } catch (err) {
+    // rollback
+    state.items = state.items.filter(i => i.id !== item.id);
+    renderBoards();
+    $('#err').textContent = err.message.startsWith('BAD_TOKEN') ? 'token invalid — reconnect' : 'save failed: ' + err.message;
+    btn.disabled = false; btn.textContent = 'add reference';
+    if (err.message.startsWith('BAD_TOKEN')) renderSyncBar();
+  }
+});
+
 load();
 </script>
 </body>
