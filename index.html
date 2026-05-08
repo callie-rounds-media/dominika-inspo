@@ -421,10 +421,33 @@
     .add .submit { width: 100%; }
     .meta { text-align: left; }
   }
+
+  .site-nav {
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 0 22px;
+    font-family: var(--font-body); font-weight: 400;
+    font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .site-nav a { color: var(--ink-soft); transition: color 160ms ease; }
+  .site-nav a:hover { color: var(--ink); }
+  .site-nav a.active { color: var(--ink); }
+  .site-nav .sep { color: var(--ink-line); }
+  .site-nav .label {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink); margin-right: 6px;
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <nav class="site-nav" aria-label="dominika dashboards">
+    <span class="label">dominika</span>
+    <a href="./" class="active" aria-current="page">inspiration</a>
+    <span class="sep">·</span>
+    <a href="./calendar/">calendar</a>
+  </nav>
   <header class="top">
     <h1>INSPIRATION <i>board.</i></h1>
   </header>

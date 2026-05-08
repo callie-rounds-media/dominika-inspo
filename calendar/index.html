@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>content calendar — dominika</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,700;1,400&family=Hanken+Grotesk:wght@300;400;500&family=Italianno&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bone: #F2EBDF;
+    --sand: #E8DBC1;
+    --ink: #2C2820;
+    --ink-soft: rgba(44, 40, 32, 0.62);
+    --ink-line: rgba(44, 40, 32, 0.14);
+    --acc: #6B7A4F;
+    --p1: #6B7A4F;
+    --p1-tint: rgba(107, 122, 79, 0.16);
+    --p2: #B26449;
+    --p2-tint: rgba(178, 100, 73, 0.16);
+    --p3: #C9A87A;
+    --p3-tint: rgba(201, 168, 122, 0.20);
+    --p4: #7A5A4A;
+    --p4-tint: rgba(122, 90, 74, 0.16);
+    --p5: #8FA6A8;
+    --p5-tint: rgba(143, 166, 168, 0.20);
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-script: 'Italianno', cursive;
+    --font-body: 'Hanken Grotesk', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bone); color: var(--ink);
+    font-family: var(--font-body); font-weight: 300;
+    -webkit-font-smoothing: antialiased; line-height: 1.5;
+  }
+  ::selection { background: rgba(107,122,79,0.25); color: var(--ink); }
+  a { color: inherit; text-decoration: none; }
+
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 56px 28px 120px; }
+
+  header.top { border-bottom: 1px solid var(--ink-line); padding-bottom: 28px; margin-bottom: 0; }
+  h1 {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: clamp(34px, 4.8vw, 56px); letter-spacing: 0.04em;
+    line-height: 1; margin: 0; text-transform: uppercase;
+  }
+  h1 i {
+    font-family: var(--font-script); font-style: normal; font-weight: 400;
+    color: var(--acc); text-transform: none;
+    font-size: 1.05em; letter-spacing: 0; margin-left: 6px; vertical-align: -0.02em;
+  }
+  .swatch-strip {
+    height: 14px; margin: 22px 0 36px;
+    border: 1px solid var(--ink-line);
+    background: linear-gradient(to right,
+      var(--p1) 0% 20%, var(--p2) 20% 40%, var(--p3) 40% 60%,
+      var(--p4) 60% 80%, var(--p5) 80% 100%);
+  }
+
+  /* sync bar */
+  #sync-bar {
+    padding: 10px 14px; margin-bottom: 24px;
+    background: var(--sand); border: 1px solid var(--ink-line);
+    font-size: 12px; letter-spacing: 0.04em; color: var(--ink-soft);
+    display: flex; align-items: center; gap: 12px;
+  }
+  #sync-bar .btn-mini {
+    background: var(--ink); color: var(--bone); border: none;
+    padding: 6px 12px; font-family: var(--font-body); font-size: 11px;
+    letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer;
+  }
+  #sync-bar .btn-mini.ghost { background: none; color: var(--ink-soft); text-decoration: underline; }
+
+  /* pillars overview — always 5 across */
+  .pillars {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+    margin-bottom: 56px;
+  }
+  .p-tile {
+    border: 1px solid var(--ink-line); background: var(--bone);
+    overflow: hidden; display: flex; flex-direction: column;
+    min-width: 0;
+  }
+  .p-tile .cover {
+    aspect-ratio: 4 / 5; background: var(--sand); overflow: hidden; position: relative;
+  }
+  .p-tile .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .p-tile .body { padding: 12px 12px 14px; }
+  .p-tile .num {
+    font-size: 8.5px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 5px;
+  }
+  .p-tile .name {
+    font-family: var(--font-display); font-weight: 500; font-size: 16px;
+    letter-spacing: 0.02em; line-height: 1.05; text-transform: uppercase; margin-bottom: 6px;
+  }
+  .p-tile .desc {
+    font-size: 11px; line-height: 1.5; color: var(--ink); opacity: 0.82;
+  }
+  @media (max-width: 720px) {
+    .pillars { gap: 4px; margin-bottom: 36px; }
+    .p-tile .cover { aspect-ratio: 3 / 4; }
+    .p-tile .body { padding: 6px 5px 8px; }
+    .p-tile .num { display: none; }
+    .p-tile .name { font-size: 9.5px; line-height: 1.1; letter-spacing: 0.01em; margin-bottom: 0; }
+    .p-tile .desc { display: none; }
+  }
+  .p-tile.acc-1 { border-color: var(--p1); }
+  .p-tile.acc-2 { border-color: var(--p2); }
+  .p-tile.acc-3 { border-color: var(--p3); }
+  .p-tile.acc-4 { border-color: var(--p4); }
+  .p-tile.acc-5 { border-color: var(--p5); }
+
+  /* section heading */
+  .sec {
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 1px solid var(--ink-line);
+    padding-bottom: 14px; margin-bottom: 24px;
+  }
+  .sec h2 {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: 32px; letter-spacing: 0.04em; line-height: 1;
+    text-transform: uppercase; margin: 0;
+  }
+  .sec .controls { display: flex; align-items: center; gap: 10px; }
+  .sec .controls button {
+    background: var(--bone); border: 1px solid var(--ink-line);
+    padding: 8px 14px; font-family: var(--font-body); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer;
+    color: var(--ink);
+  }
+  .sec .controls button:hover { border-color: var(--ink); }
+  .sec .controls .month {
+    min-width: 220px; text-align: center;
+    font-family: var(--font-display); font-weight: 500;
+    font-size: 22px; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+
+  /* calendar grid */
+  .cal {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 1px; background: var(--ink-line);
+    border: 1px solid var(--ink-line);
+  }
+  .cal .h {
+    background: var(--sand); padding: 10px 8px;
+    font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--ink-soft);
+    text-align: center;
+  }
+  .cal .d {
+    background: var(--bone); min-height: 110px; padding: 8px 10px 10px;
+    position: relative; display: flex; flex-direction: column; gap: 4px;
+  }
+  .cal .d.other { background: rgba(232, 219, 193, 0.35); }
+  .cal .d.other .num { opacity: 0.45; }
+  .cal .d .num {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: 16px; line-height: 1; color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .cal .d.today .num {
+    background: var(--ink); color: var(--bone);
+    width: 26px; height: 26px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .cal .post {
+    border-left: 3px solid; padding: 5px 7px 6px;
+    font-size: 10.5px; line-height: 1.35;
+    cursor: pointer; transition: opacity 0.15s ease;
+  }
+  .cal .post:hover { opacity: 0.85; }
+  .cal .post .pname {
+    font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
+    font-weight: 500;
+  }
+  .cal .post .ptitle { font-size: 11px; margin-top: 1px; opacity: 0.8; }
+  .cal .post.p1 { background: var(--p1-tint); border-color: var(--p1); }
+  .cal .post.p1 .pname { color: var(--p1); }
+  .cal .post.p2 { background: var(--p2-tint); border-color: var(--p2); }
+  .cal .post.p2 .pname { color: var(--p2); }
+  .cal .post.p3 { background: var(--p3-tint); border-color: var(--p3); }
+  .cal .post.p3 .pname { color: #846a3e; }
+  .cal .post.p4 { background: var(--p4-tint); border-color: var(--p4); }
+  .cal .post.p4 .pname { color: var(--p4); }
+  .cal .post.p5 { background: var(--p5-tint); border-color: var(--p5); }
+  .cal .post.p5 .pname { color: #5d7375; }
+
+  .cal .add-btn {
+    position: absolute; top: 6px; right: 6px;
+    background: none; border: 1px solid var(--ink-line); border-radius: 50%;
+    width: 22px; height: 22px; cursor: pointer; opacity: 0;
+    color: var(--ink-soft); font-size: 13px; line-height: 1;
+    display: none;
+    align-items: center; justify-content: center;
+    transition: opacity 0.15s ease;
+  }
+  body.editing .cal .add-btn { display: flex; }
+  body.editing .cal .d:hover .add-btn { opacity: 0.9; }
+  .cal .add-btn:hover { color: var(--ink); }
+
+  /* modal */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(20,18,14,0.78);
+    backdrop-filter: blur(6px); z-index: 100;
+    display: none; align-items: flex-start; justify-content: center;
+    padding: 56px 24px; overflow-y: auto;
+  }
+  .modal-bg.on { display: flex; }
+  .modal {
+    background: var(--bone); border: 1px solid var(--ink-line);
+    width: 100%; max-width: 540px; padding: 28px 32px 24px;
+  }
+  .modal .mhead {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--ink-line);
+  }
+  .modal .mhead .meta {
+    font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--ink-soft);
+  }
+  .modal .mhead .close {
+    background: none; border: none; cursor: pointer;
+    color: var(--ink-soft); font-size: 16px; line-height: 1; padding: 0 6px;
+  }
+  .modal .mhead .close:hover { color: var(--ink); }
+  .modal .mdate {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: 30px; letter-spacing: 0.02em; line-height: 1;
+    text-transform: uppercase; margin: 0 0 18px;
+  }
+  .modal label {
+    display: block; font-size: 10px; letter-spacing: 0.28em;
+    text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px; margin-top: 14px;
+  }
+  .modal input[type="text"], .modal textarea, .modal select {
+    width: 100%; background: var(--bone); border: 1px solid var(--ink-line);
+    padding: 10px 12px; font-family: var(--font-body); font-size: 14px;
+    color: var(--ink); border-radius: 0; outline: none;
+  }
+  .modal input:focus, .modal textarea:focus, .modal select:focus { border-color: var(--ink); }
+  .modal textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
+  .modal .pillar-pick { display: flex; gap: 6px; flex-wrap: wrap; }
+  .modal .pillar-pick button {
+    border: 1px solid var(--ink-line); background: var(--bone);
+    padding: 8px 12px; font-family: var(--font-body); font-size: 11px;
+    letter-spacing: 0.06em; cursor: pointer; color: var(--ink); flex: 1;
+  }
+  .modal .pillar-pick button.on { background: var(--ink); color: var(--bone); border-color: var(--ink); }
+  .modal .actions {
+    display: flex; gap: 10px; align-items: center; margin-top: 22px;
+  }
+  .modal .actions .save {
+    background: var(--ink); color: var(--bone); border: none;
+    padding: 12px 24px; font-family: var(--font-body); font-size: 12px;
+    letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer;
+  }
+  .modal .actions .save:hover { background: var(--acc); }
+  .modal .actions .delete {
+    background: none; border: none; cursor: pointer;
+    color: var(--p2); font-size: 12px; letter-spacing: 0.04em;
+    text-decoration: underline; margin-left: auto;
+  }
+
+  @media (max-width: 760px) {
+    .wrap { padding: 32px 12px 60px; }
+    .swatch-strip { margin: 18px 0 24px; }
+
+    /* section heading */
+    .sec { padding-bottom: 10px; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+    .sec h2 { font-size: 22px; }
+    .sec .controls { gap: 6px; flex-wrap: wrap; }
+    .sec .controls button { padding: 6px 10px; font-size: 10px; letter-spacing: 0.12em; }
+    .sec .controls .month { min-width: 120px; font-size: 14px; }
+
+    /* calendar */
+    .cal .h { padding: 6px 2px; font-size: 8.5px; letter-spacing: 0.12em; }
+    .cal .d { min-height: 60px; padding: 4px 3px 5px; gap: 2px; }
+    .cal .d .num { font-size: 12px; margin-bottom: 1px; }
+    .cal .d.today .num { width: 20px; height: 20px; font-size: 10px; }
+    .cal .post { padding: 2px 3px; line-height: 1.1; }
+    .cal .post .pname { font-size: 7.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .cal .post .ptitle { display: none; }
+    .cal .add-btn { width: 18px; height: 18px; font-size: 11px; top: 3px; right: 3px; }
+  }
+  /* swap to short pillar number on small screens */
+  .cal .post .pname-short { display: none; }
+  @media (max-width: 540px) {
+    .cal .post .pname-text { display: none; }
+    .cal .post .pname-short { display: inline; font-weight: 600; letter-spacing: 0.08em; }
+  }
+  /* looking ahead section */
+  @media (max-width: 760px) {
+    section[class] + section, .wrap > section { padding: 22px 18px !important; }
+    .wrap section h3 { font-size: 22px !important; line-height: 1.05 !important; }
+    .wrap section p { font-size: 13px !important; line-height: 1.6 !important; }
+  }
+  /* modal on phone */
+  @media (max-width: 720px) {
+    .modal-bg { padding: 24px 14px; }
+    .modal { padding: 22px 20px 20px; }
+    .modal .mdate { font-size: 22px; }
+    .modal .pillar-pick button { font-size: 10px; padding: 7px 8px; }
+  }
+
+  .empty { text-align: center; padding: 60px 20px; color: var(--ink-soft); font-size: 14px; }
+
+  .site-nav {
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 0 22px;
+    font-family: var(--font-body); font-weight: 400;
+    font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .site-nav a { color: var(--ink-soft); transition: color 160ms ease; }
+  .site-nav a:hover { color: var(--ink); }
+  .site-nav a.active { color: var(--ink); }
+  .site-nav .sep { color: var(--ink-line); }
+  .site-nav .label {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink); margin-right: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="site-nav" aria-label="dominika dashboards">
+    <span class="label">dominika</span>
+    <a href="../">inspiration</a>
+    <span class="sep">·</span>
+    <a href="./" class="active" aria-current="page">calendar</a>
+  </nav>
+  <header class="top">
+    <h1>CONTENT <i>calendar.</i></h1>
+  </header>
+  <div class="swatch-strip" aria-hidden="true"></div>
+
+  <!-- 5 pillars -->
+  <div class="pillars" id="pillars"></div>
+
+  <!-- calendar -->
+  <div class="sec">
+    <h2 id="month-title">may</h2>
+    <div class="controls">
+      <button id="prev">←</button>
+      <span class="month" id="month-label">may 2026</span>
+      <button id="next">→</button>
+      <button id="today-btn">today</button>
+    </div>
+  </div>
+
+  <div class="cal" id="cal"></div>
+
+  <!-- looking ahead -->
+  <section style="margin-top:64px; padding:32px; border:1px solid var(--ink-line); background:var(--bone);">
+    <p style="font-size:10px; letter-spacing:0.32em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 8px;">looking ahead · month two</p>
+    <h3 style="font-family:var(--font-display); font-weight:500; font-size:28px; letter-spacing:0.04em; line-height:1.05; text-transform:uppercase; margin:0 0 16px;">A BRANDED SERIES <i style="font-family:var(--font-script); font-style:normal; font-weight:400; color:var(--acc); text-transform:none; font-size:1.1em;">of your own.</i></h3>
+    <div style="font-size:14.5px; line-height:1.7; color:var(--ink); opacity:0.92; max-width:780px;">
+      <p style="margin:0 0 12px;">
+        gabriella__cristina runs a weekly recurring series. every monday, same title, same cover layout, content rotates. she's built cumulative authority around it. the audience knows what's coming, comes back for it, saves it, and the brand keeps compounding because the format never changes even though the content does.
+      </p>
+      <p style="margin:0 0 12px;">
+        once you're a month in and the rhythm is steady, this is the move. one weekly recurring post with a fixed format that becomes your thing.
+      </p>
+      <p style="margin:0;">
+        we'll workshop this together when the first month is in there. in the meantime, we can start brainstorming ideas, what your version of it could be, the angle that ends up being recognizably yours.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+<!-- entry modal -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="mhead">
+      <span class="meta" id="m-meta">edit entry</span>
+      <button class="close" id="m-close">✕</button>
+    </div>
+    <h3 class="mdate" id="m-date"></h3>
+
+    <label>pillar</label>
+    <div class="pillar-pick" id="m-pillar"></div>
+
+    <label for="m-title">title (optional)</label>
+    <input id="m-title" type="text" placeholder="e.g. things i'm into this week" />
+
+    <label for="m-note">note (optional)</label>
+    <textarea id="m-note" placeholder="caption hook, location, what to capture, any reference urls"></textarea>
+
+    <div class="actions">
+      <button class="save" id="m-save">save</button>
+      <button class="delete" id="m-delete">remove from calendar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { getToken, setToken, clearToken, putEntries } from './lib/sync.js';
+
+const DATA = './data/calendar.json';
+
+const CV = '?v=20260506b';
+const PILLARS = [
+  { key: '01', name: 'dubai locations',          cover: 'covers/01-dubai-locations.jpg' + CV,
+    desc: "the lesser-known ones. parks, gardens, hidden cafes, places of grounded connection. plus the wilder side, dunes, desert drives, mountains, cliffs, anywhere off the main grid. nothing chain." },
+  { key: '02', name: 'movement',                 cover: 'covers/02-movement.jpg' + CV,
+    desc: "pilates, walks, yoga, hikes, gym, stretching, the everyday side. plus the adventure side, e-foiling, surfing, paddle, climbing, kite, anything that asks something of the body." },
+  { key: '03', name: 'food + supplements',       cover: 'covers/03-food.jpg' + CV,
+    desc: "matcha, meals, vitamins, supplements. what you're actually putting in your body, where you actually go." },
+  { key: '04', name: 'journal, reflection, personal', cover: 'covers/04-journal.jpg' + CV,
+    desc: "the slower, more honest side. text over photo carousels, sunset shots, the moments in between. this is the pillar that builds depth. relatability lives here, and it's what turns viewers into people who feel close to you." },
+  { key: '05', name: 'biohacking + recovery',    cover: 'covers/05-biohacking.jpg' + CV,
+    desc: "sauna, ice bath, cryo, cold plunge, red light, iv drips, breathwork. the longevity spots and rituals in dubai." },
+];
+const pIdx = { '01': 1, '02': 2, '03': 3, '04': 4, '05': 5 };
+const pName = (k) => PILLARS.find(p => p.key === k)?.name || k;
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const state = { entries: [], view: new Date(2026, 4, 1) /* may 2026 */, editId: null, editPillar: '01', editDate: null };
+
+function escape(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function ymd(d) { return d.toISOString().slice(0, 10); }
+function fmtDate(d) {
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).toLowerCase();
+}
+function monthLabel(d) {
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toLowerCase();
+}
+
+// ---- pillars overview ----
+function renderPillars() {
+  $('#pillars').innerHTML = PILLARS.map((p, i) => `
+    <div class="p-tile acc-${i+1}">
+      <div class="cover"><img src="${p.cover}" alt="" loading="lazy" /></div>
+      <div class="body">
+        <div class="num">pillar ${p.key}</div>
+        <div class="name">${p.name}</div>
+        <div class="desc">${p.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ---- calendar grid ----
+function renderCal() {
+  const view = state.view;
+  $('#month-label').textContent = monthLabel(view);
+  $('#month-title').textContent = view.toLocaleDateString('en-US', { month: 'long' }).toLowerCase();
+
+  const first = new Date(view.getFullYear(), view.getMonth(), 1);
+  const startDow = first.getDay(); // 0=sun
+  const daysInMonth = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+  const today = ymd(new Date());
+
+  const headers = ['sun','mon','tue','wed','thu','fri','sat'].map(h => `<div class="h">${h}</div>`).join('');
+
+  // pad with prev month days
+  const prevDays = startDow;
+  const prevMonthEnd = new Date(view.getFullYear(), view.getMonth(), 0).getDate();
+  let cells = '';
+  for (let i = prevDays - 1; i >= 0; i--) {
+    cells += `<div class="d other"><span class="num">${prevMonthEnd - i}</span></div>`;
+  }
+  // current month days
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dt = new Date(view.getFullYear(), view.getMonth(), day);
+    const iso = ymd(dt);
+    const isToday = iso === today;
+    const dayEntries = state.entries.filter(e => e.date === iso);
+    const posts = dayEntries.map(e => {
+      const px = pIdx[e.pillar] || 1;
+      const titleBit = e.title ? `<div class="ptitle">${escape(e.title)}</div>` : '';
+      // on phone, show short label; on desktop, show full pillar name
+      const full = pName(e.pillar);
+      const short = e.pillar; // "01" etc as fallback for tiny screens
+      return `<div class="post p${px}" data-id="${escape(e.id)}">
+        <div class="pname"><span class="pname-text">${full}</span><span class="pname-short">${short}</span></div>
+        ${titleBit}
+      </div>`;
+    }).join('');
+    cells += `<div class="d ${isToday ? 'today' : ''}" data-date="${iso}">
+      <span class="num">${day}</span>
+      <button class="add-btn" data-add="${iso}" title="add to this day">+</button>
+      ${posts}
+    </div>`;
+  }
+  // pad next month days to fill grid
+  const totalCells = prevDays + daysInMonth;
+  const trailing = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= trailing; i++) {
+    cells += `<div class="d other"><span class="num">${i}</span></div>`;
+  }
+  $('#cal').innerHTML = headers + cells;
+}
+
+// ---- modal ----
+function openEdit(entry) {
+  const editable = !!getToken();
+  state.editId = entry?.id || null;
+  state.editDate = entry?.date || null;
+  state.editPillar = entry?.pillar || '01';
+  $('#m-meta').textContent = editable ? (entry ? 'edit entry' : 'new entry') : (entry ? pName(entry.pillar) : '');
+  $('#m-date').textContent = fmtDate(new Date(state.editDate + 'T12:00:00'));
+  $('#m-pillar').innerHTML = PILLARS.map(p => `
+    <button data-p="${p.key}" class="${p.key === state.editPillar ? 'on' : ''}" ${editable ? '' : 'disabled style="cursor:default;"'}>${p.name}</button>
+  `).join('');
+  $('#m-title').value = entry?.title || '';
+  $('#m-note').value = entry?.note || '';
+  $('#m-title').readOnly = !editable;
+  $('#m-note').readOnly = !editable;
+  $('#m-title').style.background = editable ? 'var(--bone)' : 'transparent';
+  $('#m-note').style.background = editable ? 'var(--bone)' : 'transparent';
+  $('#m-save').style.display = editable ? '' : 'none';
+  $('#m-delete').style.display = (editable && entry) ? '' : 'none';
+  // hide empty form rows in read-only when there's no content
+  if (!editable) {
+    if (!entry?.title) $('#m-title').closest('label').nextElementSibling?.remove?.();
+    if (!entry?.note)  $('#m-note').closest('label').nextElementSibling?.remove?.();
+  }
+  $('#modal-bg').classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal() {
+  $('#modal-bg').classList.remove('on');
+  document.body.style.overflow = '';
+  state.editId = null;
+}
+
+$('#m-close').addEventListener('click', closeModal);
+$('#modal-bg').addEventListener('click', e => { if (e.target.id === 'modal-bg') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#modal-bg').classList.contains('on')) closeModal(); });
+
+$('#m-pillar').addEventListener('click', e => {
+  const b = e.target.closest('button[data-p]');
+  if (!b) return;
+  state.editPillar = b.dataset.p;
+  $$('#m-pillar button').forEach(x => x.classList.toggle('on', x.dataset.p === state.editPillar));
+});
+
+$('#m-save').addEventListener('click', async () => {
+  const title = $('#m-title').value.trim();
+  const note = $('#m-note').value.trim();
+  const pillar = state.editPillar;
+  const date = state.editDate;
+  if (!getToken()) { await promptForToken(); if (!getToken()) return; }
+  let next;
+  if (state.editId) {
+    next = state.entries.map(e => e.id === state.editId ? { ...e, pillar, title, note } : e);
+  } else {
+    next = [...state.entries, {
+      id: 'p_' + date + '_' + Math.random().toString(36).slice(2,5),
+      date, pillar, title, note, status: 'planned'
+    }];
+  }
+  state.entries = next;
+  closeModal();
+  renderCal();
+  try {
+    await putEntries(next, 'calendar: edit entry');
+  } catch (err) {
+    alert(err.message.startsWith('BAD_TOKEN') ? 'token invalid, reconnect' : 'save failed: ' + err.message);
+  }
+});
+
+$('#m-delete').addEventListener('click', async () => {
+  if (!confirm('remove this entry from the calendar?')) return;
+  if (!state.editId) { closeModal(); return; }
+  if (!getToken()) { await promptForToken(); if (!getToken()) return; }
+  const next = state.entries.filter(e => e.id !== state.editId);
+  state.entries = next;
+  closeModal();
+  renderCal();
+  try {
+    await putEntries(next, 'calendar: remove entry');
+  } catch (err) {
+    alert('remove failed: ' + err.message);
+  }
+});
+
+// ---- calendar interactions ----
+$('#cal').addEventListener('click', e => {
+  const post = e.target.closest('.post[data-id]');
+  if (post) {
+    const entry = state.entries.find(x => x.id === post.dataset.id);
+    if (entry) openEdit(entry);
+    return;
+  }
+  const add = e.target.closest('[data-add]');
+  if (add) {
+    state.editDate = add.dataset.add;
+    openEdit(null);
+    return;
+  }
+});
+
+$('#prev').addEventListener('click', () => {
+  state.view = new Date(state.view.getFullYear(), state.view.getMonth() - 1, 1);
+  renderCal();
+});
+$('#next').addEventListener('click', () => {
+  state.view = new Date(state.view.getFullYear(), state.view.getMonth() + 1, 1);
+  renderCal();
+});
+$('#today-btn').addEventListener('click', () => {
+  const t = new Date();
+  state.view = new Date(t.getFullYear(), t.getMonth(), 1);
+  renderCal();
+});
+
+// ---- token (sync bar hidden, prompt fires on save attempt only) ----
+function renderSyncBar() { /* hidden */ }
+async function promptForToken() {
+  const url = `https://github.com/settings/personal-access-tokens/new?name=dominika-content&description=edit%20content%20calendar&target_name=callie-rounds-media`;
+  alert(
+`to enable saving:
+
+1. open: ${url}
+2. repository access → only select repositories → pick "callie-rounds-media/dominika-content"
+3. repository permissions → contents → read and write
+4. generate token, copy it
+5. paste in the next prompt`
+  );
+  window.open(url, '_blank');
+  const t = prompt('paste your github token here:');
+  if (t && t.trim()) { setToken(t.trim()); alert('connected ✓'); }
+}
+
+// ---- init ----
+async function load() {
+  try {
+    if (getToken()) document.body.classList.add('editing');
+    const r = await fetch(DATA + '?t=' + Date.now(), { cache: 'no-store' });
+    const data = await r.json();
+    state.entries = data.entries || [];
+    renderPillars();
+    renderCal();
+  } catch {
+    document.body.innerHTML = '<div class="empty">couldn\'t load calendar</div>';
+  }
+}
+load();
+</script>
+</body>
+</html>
