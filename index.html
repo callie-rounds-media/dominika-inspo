@@ -475,19 +475,13 @@
     <div class="err" id="err"></div>
   </form>
 
-  <div id="sync-bar" style="display:none; padding:10px 14px; margin-bottom:24px; background:var(--sand); border:1px solid var(--ink-line); font-size:12px; letter-spacing:0.04em; color:var(--ink-soft);">
-    <span id="sync-msg">connect github to sync your edits</span>
-    <button id="setup-token" style="margin-left:10px; background:var(--ink); color:var(--bone); border:none; padding:6px 12px; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; cursor:pointer;">connect</button>
-    <button id="clear-token" style="margin-left:6px; background:none; border:none; color:var(--ink-soft); font-size:11px; letter-spacing:0.04em; cursor:pointer; text-decoration:underline;">disconnect</button>
-  </div>
-
   <div class="boards" id="boards">
     <div class="loading">loading…</div>
   </div>
 </div>
 
 <script type="module">
-import { getToken, setToken, clearToken, putItems, pullItems, REPO } from './lib/sync.js';
+import { addItem, flushQueue } from './lib/sync.js';
 
 const DATA = './data/items.json';
 const BOARDS = [
@@ -517,35 +511,17 @@ function renderBoards() {
   }).join('');
 }
 
-function renderSyncBar() {
-  const bar = $('#sync-bar');
-  const msg = $('#sync-msg');
-  if (getToken()) {
-    bar.style.display = '';
-    bar.style.background = 'transparent';
-    bar.style.borderColor = 'var(--ink-line)';
-    msg.textContent = '✓ synced to github · changes save to the repo';
-    $('#setup-token').style.display = 'none';
-    $('#clear-token').style.display = '';
-  } else {
-    bar.style.display = '';
-    bar.style.background = 'var(--sand)';
-    msg.textContent = 'connect github to save your edits (one-time setup, ~30 seconds)';
-    $('#setup-token').style.display = '';
-    $('#clear-token').style.display = 'none';
-  }
-}
-
 async function load() {
   try {
     const r = await fetch(DATA + '?t=' + Date.now(), { cache: 'no-store' });
     const data = await r.json();
     state.items = data.items || [];
     renderBoards();
-    renderSyncBar();
   } catch {
     $('#boards').innerHTML = `<div class="empty">couldn't load</div>`;
   }
+  // best-effort flush any queued submissions from previous sessions
+  flushQueue();
 }
 
 // chips
@@ -558,34 +534,9 @@ $('#cat-chips').addEventListener('click', e => {
 });
 document.querySelector('.cat-chip[data-cat="text"]').classList.add('active');
 
-// token connect / disconnect
-async function promptForToken() {
-  const url = `https://github.com/settings/personal-access-tokens/new?name=dominika-inspo&description=add%20%26%20edit%20inspiration%20board%20entries&scopes=&target_name=callie-rounds-media&repository_ids=`;
-  alert(
-`to enable saving:
-
-1. open: ${url}
-2. under repository access → only select repositories → pick "callie-rounds-media/dominika-inspo"
-3. under repository permissions → contents → read and write
-4. generate token, copy it
-5. paste in the next prompt
-
-(token only stored in your browser)`
-  );
-  window.open(url, '_blank');
-  const t = prompt('paste your github token here:');
-  if (t && t.trim()) {
-    setToken(t.trim());
-    renderSyncBar();
-    alert('connected ✓');
-  }
-}
-$('#setup-token').addEventListener('click', promptForToken);
-$('#clear-token').addEventListener('click', () => {
-  if (confirm('disconnect github sync?')) { clearToken(); renderSyncBar(); }
-});
-
-// add form submit → optimistic update + commit
+// add form submit → optimistic local add + best-effort sync via proxy.
+// dominika never sees infra-level errors; the queue catches anything
+// the proxy can't take right now.
 $('#add-form').addEventListener('submit', async e => {
   e.preventDefault();
   $('#err').textContent = '';
@@ -595,7 +546,6 @@ $('#add-form').addEventListener('submit', async e => {
   if (!url) { $('#err').textContent = 'paste a link first'; return; }
   if (!cat) { $('#err').textContent = 'pick a category'; return; }
   try { new URL(url); } catch { $('#err').textContent = 'not a valid url'; return; }
-  if (!getToken()) { await promptForToken(); if (!getToken()) { $('#err').textContent = 'connect github first to save'; return; } }
 
   const btn = $('#submit-btn');
   btn.disabled = true; btn.textContent = 'saving…';
@@ -606,23 +556,14 @@ $('#add-form').addEventListener('submit', async e => {
     created_at: new Date().toISOString()
   };
 
-  // optimistic
   state.items.unshift(item);
   renderBoards();
   $('#url').value = ''; $('#note').value = '';
 
-  try {
-    await putItems(state.items, `inspo: add ${cat} reference`);
+  addItem(item).finally(() => {
     btn.textContent = 'added ✓';
     setTimeout(() => { btn.textContent = 'add reference'; btn.disabled = false; }, 1200);
-  } catch (err) {
-    // rollback
-    state.items = state.items.filter(i => i.id !== item.id);
-    renderBoards();
-    $('#err').textContent = err.message.startsWith('BAD_TOKEN') ? 'token invalid — reconnect' : 'save failed: ' + err.message;
-    btn.disabled = false; btn.textContent = 'add reference';
-    if (err.message.startsWith('BAD_TOKEN')) renderSyncBar();
-  }
+  });
 });
 
 load();

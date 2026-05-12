@@ -312,10 +312,6 @@
       <h2 class="title" id="board-title"></h2>
     </div>
 
-    <div id="sync-bar" style="display:none; padding:10px 14px; margin-bottom:24px; background:var(--sand); border:1px solid var(--ink-line); font-size:12px; letter-spacing:0.04em; color:var(--ink-soft);">
-      <span id="sync-msg">connect github to sync your edits</span>
-    </div>
-
     <div class="wall" id="wall"></div>
   </div>
 
@@ -338,7 +334,7 @@
 <script async defer src="//assets.pinterest.com/js/pinit.js"></script>
 
 <script type="module">
-import { getToken, setToken, clearToken, putItems, REPO } from './lib/sync.js';
+// board view is read-only; all mutations are done from the home page or by callie.
 
 const DATA = './data/items.json';
 const BOARDS = [
@@ -440,14 +436,6 @@ function renderBoard(catKey) {
     return `<article class="wcard" data-id="${escape(item.id)}">
       <div class="ttag">
         <span>${refWord} · <span class="cat">${board.name}</span></span>
-        <span class="kebab">
-          <button data-menu="${escape(item.id)}" aria-label="more">⋯</button>
-          <div class="menu" data-menu-for="${escape(item.id)}">
-            <div class="group-label">move to</div>
-            ${BOARDS.map(b => `<button class="opt${b.key===item.category?' current':''}" data-move="${escape(item.id)}" data-cat="${b.key}">${b.name}${b.key===item.category?' · current':''}</button>`).join('')}
-            <button class="opt danger" data-del="${escape(item.id)}">remove</button>
-          </div>
-        </span>
       </div>
       <div class="embed">${embedHTML(item)}</div>
       ${item.note ? `<div class="note">${escape(item.note)}</div>` : ''}
@@ -482,98 +470,6 @@ $('#m-close').addEventListener('click', closeModal);
 $('#modal-bg').addEventListener('click', e => { if (e.target.id === 'modal-bg') closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-function renderSyncBar() {
-  const bar = $('#sync-bar');
-  if (!bar) return;
-  bar.style.display = '';
-  if (getToken()) {
-    bar.style.background = 'transparent';
-    $('#sync-msg').textContent = '✓ synced to github · moves and removes save to the repo';
-  } else {
-    bar.style.background = 'var(--sand)';
-    $('#sync-msg').innerHTML = 'connect github on the home page to enable move / remove';
-  }
-}
-
-async function promptForToken() {
-  const url = `https://github.com/settings/personal-access-tokens/new?name=dominika-inspo&description=edit%20inspiration%20board&target_name=callie-rounds-media`;
-  alert(
-`to save changes:
-
-1. open: ${url}
-2. repository access → only select repositories → pick "callie-rounds-media/dominika-inspo"
-3. repository permissions → contents → read and write
-4. generate token, copy it
-5. paste in the next prompt`
-  );
-  window.open(url, '_blank');
-  const t = prompt('paste your github token:');
-  if (t && t.trim()) { setToken(t.trim()); renderSyncBar(); }
-}
-
-async function commit(message) {
-  if (!getToken()) { await promptForToken(); if (!getToken()) return false; }
-  try {
-    await putItems(allItems, message);
-    return true;
-  } catch (err) {
-    if (err.message.startsWith('BAD_TOKEN')) { renderSyncBar(); alert('token invalid — reconnect from the home page'); }
-    else alert('save failed: ' + err.message);
-    return false;
-  }
-}
-
-// open/close kebab
-document.addEventListener('click', e => {
-  const trigger = e.target.closest('[data-menu]');
-  if (trigger) {
-    const id = trigger.dataset.menu;
-    document.querySelectorAll('.menu.on').forEach(m => { if (m.dataset.menuFor !== id) m.classList.remove('on'); });
-    document.querySelector(`.menu[data-menu-for="${CSS.escape(id)}"]`)?.classList.toggle('on');
-    e.stopPropagation();
-    return;
-  }
-  if (!e.target.closest('.menu')) document.querySelectorAll('.menu.on').forEach(m => m.classList.remove('on'));
-});
-
-// move
-document.addEventListener('click', async e => {
-  const m = e.target.closest('[data-move]');
-  if (!m) return;
-  const id = m.dataset.move;
-  const newCat = m.dataset.cat;
-  const item = allItems.find(i => i.id === id);
-  if (!item || item.category === newCat) { document.querySelectorAll('.menu.on').forEach(x => x.classList.remove('on')); return; }
-  const oldCat = item.category;
-  item.category = newCat;
-  document.querySelectorAll('.menu.on').forEach(x => x.classList.remove('on'));
-  const cat = new URLSearchParams(location.search).get('cat');
-  if (cat) renderBoard(cat); else renderHome();
-  const ok = await commit(`inspo: move to ${newCat}`);
-  if (!ok) {
-    item.category = oldCat;
-    if (cat) renderBoard(cat); else renderHome();
-  }
-});
-
-// delete
-document.addEventListener('click', async e => {
-  const del = e.target.closest('[data-del]');
-  if (!del) return;
-  if (!confirm('remove this reference?')) return;
-  const id = del.dataset.del;
-  const removed = allItems.find(i => i.id === id);
-  allItems = allItems.filter(i => i.id !== id);
-  document.querySelectorAll('.menu.on').forEach(x => x.classList.remove('on'));
-  const cat = new URLSearchParams(location.search).get('cat');
-  if (cat) renderBoard(cat); else renderHome();
-  const ok = await commit('inspo: remove reference');
-  if (!ok && removed) {
-    allItems.push(removed);
-    if (cat) renderBoard(cat); else renderHome();
-  }
-});
-
 async function load() {
   try {
     const r = await fetch(DATA + '?t=' + Date.now(), { cache: 'no-store' });
@@ -581,7 +477,6 @@ async function load() {
     allItems = (data.items || []).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
     const cat = new URLSearchParams(location.search).get('cat');
     if (cat) renderBoard(cat); else renderHome();
-    renderSyncBar();
   } catch {
     $('#home').innerHTML = `<div class="empty">couldn't load</div>`;
   }
