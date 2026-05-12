@@ -470,18 +470,28 @@ $('#m-close').addEventListener('click', closeModal);
 $('#modal-bg').addEventListener('click', e => { if (e.target.id === 'modal-bg') closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-async function load() {
+async function load({ silent = false } = {}) {
   try {
     const r = await fetch(DATA + '?t=' + Date.now(), { cache: 'no-store' });
     const data = await r.json();
-    allItems = (data.items || []).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
-    const cat = new URLSearchParams(location.search).get('cat');
-    if (cat) renderBoard(cat); else renderHome();
+    const next = (data.items || []).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
+    const changed = JSON.stringify(next.map(i => i.id)) !== JSON.stringify(allItems.map(i => i.id));
+    allItems = next;
+    if (!silent || changed) {
+      const cat = new URLSearchParams(location.search).get('cat');
+      if (cat) renderBoard(cat); else renderHome();
+    }
   } catch {
-    $('#home').innerHTML = `<div class="empty">couldn't load</div>`;
+    if (!silent) $('#home').innerHTML = `<div class="empty">couldn't load</div>`;
   }
 }
 load();
+// auto-refresh every 25s so newly-added refs appear without manual reload
+setInterval(() => load({ silent: true }), 25000);
+// refresh immediately when the tab regains focus
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') load({ silent: true });
+});
 </script>
 </body>
 </html>
