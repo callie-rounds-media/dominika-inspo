@@ -536,6 +536,13 @@ $('#m-close').addEventListener('click', closeModal);
 $('#modal-bg').addEventListener('click', e => { if (e.target.id === 'modal-bg') closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
+// Tracks in-flight mutations. While any mutation is pending, the
+// background poll suppresses re-renders to avoid clobbering the
+// optimistic state with a stale snapshot of items.json.
+const pendingMutations = new Set();
+const pendingRemovals = new Set();
+const pendingMoves = new Map(); // id -> new category
+
 // ---- kebab menu: open / close ----
 document.addEventListener('click', e => {
   const trigger = e.target.closest('[data-menu]');
@@ -558,6 +565,8 @@ document.addEventListener('click', async e => {
   const item = allItems.find(i => i.id === id);
   if (!item || item.category === newCat) { document.querySelectorAll('.menu.on').forEach(x => x.classList.remove('on')); return; }
   const oldCat = item.category;
+  pendingMutations.add(id);
+  pendingMoves.set(id, newCat);
   item.category = newCat;
   document.querySelectorAll('.menu.on').forEach(x => x.classList.remove('on'));
   const cat = new URLSearchParams(location.search).get('cat');
@@ -566,10 +575,12 @@ document.addEventListener('click', async e => {
     await moveItem(id, newCat);
     try { new BroadcastChannel('dominika-inspo').postMessage({ type: 'item-moved', id, category: newCat }); } catch {}
   } catch (err) {
-    // rollback
     item.category = oldCat;
     if (cat) renderBoard(cat); else renderHome();
     alert('move failed, try again in a moment');
+  } finally {
+    pendingMutations.delete(id);
+    pendingMoves.delete(id);
   }
 });
 
@@ -580,6 +591,8 @@ document.addEventListener('click', async e => {
   if (!confirm('remove this reference?')) return;
   const id = del.dataset.del;
   const removed = allItems.find(i => i.id === id);
+  pendingMutations.add(id);
+  pendingRemovals.add(id);
   allItems = allItems.filter(i => i.id !== id);
   document.querySelectorAll('.menu.on').forEach(x => x.classList.remove('on'));
   const cat = new URLSearchParams(location.search).get('cat');
@@ -588,10 +601,12 @@ document.addEventListener('click', async e => {
     await removeItem(id);
     try { new BroadcastChannel('dominika-inspo').postMessage({ type: 'item-removed', id }); } catch {}
   } catch (err) {
-    // rollback
     if (removed) allItems.push(removed);
     if (cat) renderBoard(cat); else renderHome();
     alert('remove failed, try again in a moment');
+  } finally {
+    pendingMutations.delete(id);
+    pendingRemovals.delete(id);
   }
 });
 
@@ -599,7 +614,16 @@ async function load({ silent = false } = {}) {
   try {
     const r = await fetch(DATA + '?t=' + Date.now(), { cache: 'no-store' });
     const data = await r.json();
-    const next = (data.items || []).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
+    let next = (data.items || []).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
+
+    // honor in-flight mutations: keep the optimistic view intact even if the
+    // server snapshot is briefly stale (Worker round-trip still pending,
+    // or CDN cache not yet invalidated).
+    if (pendingMutations.size) {
+      next = next.filter(i => !pendingRemovals.has(i.id));
+      next = next.map(i => pendingMoves.has(i.id) ? { ...i, category: pendingMoves.get(i.id) } : i);
+    }
+
     const prevSig = allItems.map(i => i.id + ':' + i.category).join('|');
     const nextSig = next.map(i => i.id + ':' + i.category).join('|');
     const changed = prevSig !== nextSig;
