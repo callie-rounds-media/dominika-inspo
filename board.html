@@ -662,11 +662,23 @@ document.addEventListener('visibilitychange', () => {
 try {
   const ch = new BroadcastChannel('dominika-inspo');
   ch.addEventListener('message', (ev) => {
-    if (ev.data && /^(item-added|item-moved|item-removed)$/.test(ev.data.type)) {
-      // mutations from another tab → fetch fresh from the worker, not the
-      // CDN, so we never miss the new item due to GH Pages cache lag.
-      load({ silent: true, fresh: true });
+    if (!ev.data) return;
+    const cat = new URLSearchParams(location.search).get('cat');
+    // apply the change OPTIMISTICALLY using the payload, so the board tab
+    // updates instantly without waiting for the worker round-trip + GitHub
+    // commit. A follow-up load() will then reconcile with the real state.
+    if (ev.data.type === 'item-added' && ev.data.item && !allItems.some(i => i.id === ev.data.item.id)) {
+      allItems = [ev.data.item, ...allItems].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+      if (cat) renderBoard(cat); else renderHome();
+    } else if (ev.data.type === 'item-moved' && ev.data.id && ev.data.category) {
+      allItems = allItems.map(i => i.id === ev.data.id ? { ...i, category: ev.data.category } : i);
+      if (cat) renderBoard(cat); else renderHome();
+    } else if (ev.data.type === 'item-removed' && ev.data.id) {
+      allItems = allItems.filter(i => i.id !== ev.data.id);
+      if (cat) renderBoard(cat); else renderHome();
     }
+    // reconcile with server after a short delay (covers commit lag)
+    setTimeout(() => load({ silent: true, fresh: true }), 1500);
   });
 } catch { /* older browsers — they'll just rely on the 10s poll */ }
 </script>
