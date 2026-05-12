@@ -646,10 +646,12 @@ async function load({ silent = false, fresh = false } = {}) {
     if (!silent) $('#home').innerHTML = `<div class="empty">couldn't load</div>`;
   }
 }
-load();
+// initial load: prefer the worker (always fresh) to avoid the
+// GH Pages CDN serving a stale items.json right after a commit
+load({ fresh: true });
 
-// poll every 10s in the background — only re-renders when something actually changed,
-// and renders surgically (no flicker on existing embeds)
+// poll every 10s in the background using the CDN (cheap) — only re-renders
+// when something actually changed, and renders surgically (no embed flicker)
 setInterval(() => load({ silent: true }), 10000);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') load({ silent: true });
