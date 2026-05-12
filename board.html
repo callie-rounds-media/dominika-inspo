@@ -334,7 +334,7 @@
 <script async defer src="//assets.pinterest.com/js/pinit.js"></script>
 
 <script type="module">
-import { moveItem, removeItem } from './lib/sync.js';
+import { moveItem, removeItem, fetchItemsFresh } from './lib/sync.js';
 
 const DATA = './data/items.json';
 const BOARDS = [
@@ -610,11 +610,21 @@ document.addEventListener('click', async e => {
   }
 });
 
-async function load({ silent = false } = {}) {
+async function load({ silent = false, fresh = false } = {}) {
   try {
-    const r = await fetch(DATA + '?t=' + Date.now(), { cache: 'no-store' });
-    const data = await r.json();
-    let next = (data.items || []).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
+    let raw;
+    if (fresh) {
+      // bypass GH Pages CDN — read directly from the worker (which hits the
+      // GitHub API with auth, guaranteed live).
+      try { raw = await fetchItemsFresh(); }
+      catch { /* fall through to CDN */ }
+    }
+    if (!raw) {
+      const r = await fetch(DATA + '?t=' + Date.now(), { cache: 'no-store' });
+      const data = await r.json();
+      raw = data.items || [];
+    }
+    let next = raw.sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
 
     // honor in-flight mutations: keep the optimistic view intact even if the
     // server snapshot is briefly stale (Worker round-trip still pending,
@@ -651,7 +661,9 @@ try {
   const ch = new BroadcastChannel('dominika-inspo');
   ch.addEventListener('message', (ev) => {
     if (ev.data && /^(item-added|item-moved|item-removed)$/.test(ev.data.type)) {
-      load({ silent: true });
+      // mutations from another tab → fetch fresh from the worker, not the
+      // CDN, so we never miss the new item due to GH Pages cache lag.
+      load({ silent: true, fresh: true });
     }
   });
 } catch { /* older browsers — they'll just rely on the 10s poll */ }
