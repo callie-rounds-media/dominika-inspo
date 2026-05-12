@@ -334,7 +334,7 @@
 <script async defer src="//assets.pinterest.com/js/pinit.js"></script>
 
 <script type="module">
-// board view is read-only; all mutations are done from the home page or by callie.
+import { moveItem, removeItem } from './lib/sync.js';
 
 const DATA = './data/items.json';
 const BOARDS = [
@@ -421,32 +421,98 @@ function renderHome() {
 }
 
 // ---- BOARD render ----
-function renderBoard(catKey) {
+function cardHTML(item, board) {
+  const p = detectPlatform(item.url);
+  const isPost = !['image', 'link'].includes(p);
+  const refWord = item.label || (isPost ? 'reference post' : 'reference');
+  const moveOpts = BOARDS.map(b =>
+    `<button class="opt${b.key===item.category?' current':''}" data-move="${escape(item.id)}" data-cat="${b.key}">${b.name}${b.key===item.category?' · current':''}</button>`
+  ).join('');
+  return `<article class="wcard" data-id="${escape(item.id)}">
+    <div class="ttag">
+      <span>${refWord} · <span class="cat">${board.name}</span></span>
+      <span class="kebab">
+        <button data-menu="${escape(item.id)}" aria-label="more">⋯</button>
+        <div class="menu" data-menu-for="${escape(item.id)}">
+          <div class="group-label">move to</div>
+          ${moveOpts}
+          <button class="opt danger" data-del="${escape(item.id)}">remove</button>
+        </div>
+      </span>
+    </div>
+    <div class="embed">${embedHTML(item)}</div>
+    ${item.note ? `<div class="note">${escape(item.note)}</div>` : ''}
+    <div class="foot">
+      <span>${fmtDate(item.created_at)}</span>
+      <a href="${escape(item.url)}" target="_blank" rel="noreferrer">open original ↗</a>
+    </div>
+  </article>`;
+}
+
+// Surgically diff the rendered cards against the latest items so existing
+// embeds (IG/TikTok/Pinterest) never flicker. Only new items animate in
+// from the top; removed items fade out.
+function syncBoardDOM(catKey) {
   const board = BOARDS.find(b => b.key === catKey);
   if (!board) { renderHome(); return; }
   $('#home').style.display = 'none';
   $('#board').style.display = '';
   $('#board-title').textContent = board.name;
+
+  const wall = $('#wall');
   const items = allItems.filter(i => i.category === catKey);
-  if (!items.length) { $('#wall').innerHTML = `<div class="empty">nothing in this board yet</div>`; return; }
-  $('#wall').innerHTML = items.map(item => {
-    const p = detectPlatform(item.url);
-    const isPost = !['image', 'link'].includes(p);
-    const refWord = item.label || (isPost ? 'reference post' : 'reference');
-    return `<article class="wcard" data-id="${escape(item.id)}">
-      <div class="ttag">
-        <span>${refWord} · <span class="cat">${board.name}</span></span>
-      </div>
-      <div class="embed">${embedHTML(item)}</div>
-      ${item.note ? `<div class="note">${escape(item.note)}</div>` : ''}
-      <div class="foot">
-        <span>${fmtDate(item.created_at)}</span>
-        <a href="${escape(item.url)}" target="_blank" rel="noreferrer">open original ↗</a>
-      </div>
-    </article>`;
-  }).join('');
+  const empty = wall.querySelector('.empty');
+
+  if (!items.length) {
+    wall.innerHTML = `<div class="empty">nothing in this board yet</div>`;
+    return;
+  }
+  if (empty) empty.remove();
+
+  const desiredIds = items.map(i => i.id);
+  const existingCards = Array.from(wall.querySelectorAll('article.wcard'));
+  const existingIds = existingCards.map(c => c.dataset.id);
+
+  // remove cards that are no longer present
+  for (const card of existingCards) {
+    if (!desiredIds.includes(card.dataset.id)) {
+      card.style.transition = 'opacity 240ms ease';
+      card.style.opacity = '0';
+      setTimeout(() => card.remove(), 260);
+    }
+  }
+
+  // insert new cards at the correct position so order matches items[] (newest first)
+  let anchor = null;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const existing = wall.querySelector(`article.wcard[data-id="${CSS.escape(item.id)}"]`);
+    if (existing) {
+      anchor = existing;
+      continue;
+    }
+    // brand-new card
+    const tmp = document.createElement('div');
+    tmp.innerHTML = cardHTML(item, board);
+    const card = tmp.firstElementChild;
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(-6px)';
+    card.style.transition = 'opacity 320ms ease, transform 320ms ease';
+    if (anchor && anchor.nextSibling) wall.insertBefore(card, anchor.nextSibling);
+    else if (anchor) wall.appendChild(card);
+    else wall.insertBefore(card, wall.firstChild);
+    requestAnimationFrame(() => {
+      card.style.opacity = '1';
+      card.style.transform = '';
+    });
+    anchor = card;
+  }
   processEmbeds();
 }
+
+// Backward-compatible wrapper — first paint and category switches build from scratch,
+// subsequent updates diff in place.
+function renderBoard(catKey) { syncBoardDOM(catKey); }
 
 // ---- MODAL ----
 function openModal(item) {
@@ -470,12 +536,73 @@ $('#m-close').addEventListener('click', closeModal);
 $('#modal-bg').addEventListener('click', e => { if (e.target.id === 'modal-bg') closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
+// ---- kebab menu: open / close ----
+document.addEventListener('click', e => {
+  const trigger = e.target.closest('[data-menu]');
+  if (trigger) {
+    const id = trigger.dataset.menu;
+    document.querySelectorAll('.menu.on').forEach(m => { if (m.dataset.menuFor !== id) m.classList.remove('on'); });
+    document.querySelector(`.menu[data-menu-for="${CSS.escape(id)}"]`)?.classList.toggle('on');
+    e.stopPropagation();
+    return;
+  }
+  if (!e.target.closest('.menu')) document.querySelectorAll('.menu.on').forEach(m => m.classList.remove('on'));
+});
+
+// ---- move ----
+document.addEventListener('click', async e => {
+  const m = e.target.closest('[data-move]');
+  if (!m) return;
+  const id = m.dataset.move;
+  const newCat = m.dataset.cat;
+  const item = allItems.find(i => i.id === id);
+  if (!item || item.category === newCat) { document.querySelectorAll('.menu.on').forEach(x => x.classList.remove('on')); return; }
+  const oldCat = item.category;
+  item.category = newCat;
+  document.querySelectorAll('.menu.on').forEach(x => x.classList.remove('on'));
+  const cat = new URLSearchParams(location.search).get('cat');
+  if (cat) renderBoard(cat); else renderHome();
+  try {
+    await moveItem(id, newCat);
+    try { new BroadcastChannel('dominika-inspo').postMessage({ type: 'item-moved', id, category: newCat }); } catch {}
+  } catch (err) {
+    // rollback
+    item.category = oldCat;
+    if (cat) renderBoard(cat); else renderHome();
+    alert('move failed, try again in a moment');
+  }
+});
+
+// ---- remove ----
+document.addEventListener('click', async e => {
+  const del = e.target.closest('[data-del]');
+  if (!del) return;
+  if (!confirm('remove this reference?')) return;
+  const id = del.dataset.del;
+  const removed = allItems.find(i => i.id === id);
+  allItems = allItems.filter(i => i.id !== id);
+  document.querySelectorAll('.menu.on').forEach(x => x.classList.remove('on'));
+  const cat = new URLSearchParams(location.search).get('cat');
+  if (cat) renderBoard(cat); else renderHome();
+  try {
+    await removeItem(id);
+    try { new BroadcastChannel('dominika-inspo').postMessage({ type: 'item-removed', id }); } catch {}
+  } catch (err) {
+    // rollback
+    if (removed) allItems.push(removed);
+    if (cat) renderBoard(cat); else renderHome();
+    alert('remove failed, try again in a moment');
+  }
+});
+
 async function load({ silent = false } = {}) {
   try {
     const r = await fetch(DATA + '?t=' + Date.now(), { cache: 'no-store' });
     const data = await r.json();
     const next = (data.items || []).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
-    const changed = JSON.stringify(next.map(i => i.id)) !== JSON.stringify(allItems.map(i => i.id));
+    const prevSig = allItems.map(i => i.id + ':' + i.category).join('|');
+    const nextSig = next.map(i => i.id + ':' + i.category).join('|');
+    const changed = prevSig !== nextSig;
     allItems = next;
     if (!silent || changed) {
       const cat = new URLSearchParams(location.search).get('cat');
@@ -486,12 +613,24 @@ async function load({ silent = false } = {}) {
   }
 }
 load();
-// auto-refresh every 25s so newly-added refs appear without manual reload
-setInterval(() => load({ silent: true }), 25000);
-// refresh immediately when the tab regains focus
+
+// poll every 10s in the background — only re-renders when something actually changed,
+// and renders surgically (no flicker on existing embeds)
+setInterval(() => load({ silent: true }), 10000);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') load({ silent: true });
 });
+
+// same-browser instant sync: when index.html (home page) commits a new ref,
+// it broadcasts on this channel. board.html picks it up and refreshes immediately.
+try {
+  const ch = new BroadcastChannel('dominika-inspo');
+  ch.addEventListener('message', (ev) => {
+    if (ev.data && /^(item-added|item-moved|item-removed)$/.test(ev.data.type)) {
+      load({ silent: true });
+    }
+  });
+} catch { /* older browsers — they'll just rely on the 10s poll */ }
 </script>
 </body>
 </html>
