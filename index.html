@@ -560,12 +560,18 @@ $('#add-form').addEventListener('submit', async e => {
   renderBoards();
   $('#url').value = ''; $('#note').value = '';
 
-  // ping any open board.html tabs in this browser so they refresh instantly
   try { new BroadcastChannel('dominika-inspo').postMessage({ type: 'item-added', item }); } catch {}
 
-  addItem(item).finally(() => {
-    btn.textContent = 'added ✓';
-    setTimeout(() => { btn.textContent = 'add reference'; btn.disabled = false; }, 1200);
+  addItem(item).then(({ synced }) => {
+    if (synced) {
+      btn.textContent = 'added ✓';
+    } else {
+      // server didn't accept it (worker down, network blip). The item is
+      // queued in localStorage and will auto-flush on next page load.
+      btn.textContent = 'saving…';
+    }
+  }).finally(() => {
+    setTimeout(() => { btn.textContent = 'add reference'; btn.disabled = false; }, 1500);
   });
 });
 
