@@ -607,6 +607,14 @@ $('#cal').addEventListener('click', e => {
     openEdit(null);
     return;
   }
+  // click anywhere on a day square: open its entry, or start a new one
+  const day = e.target.closest('.d[data-date]');
+  if (day) {
+    const iso = day.dataset.date;
+    const dayEntries = state.entries.filter(x => x.date === iso);
+    if (dayEntries.length) { openEdit(dayEntries[0]); }
+    else { state.editDate = iso; openEdit(null); }
+  }
 });
 
 $('#prev').addEventListener('click', () => {
