@@ -177,6 +177,10 @@
     font-weight: 500;
   }
   .cal .post .ptitle { font-size: 11px; margin-top: 1px; opacity: 0.8; }
+  .cal .post .pthumb {
+    display: block; width: 100%; height: 46px; object-fit: cover;
+    border-radius: 3px; margin-top: 4px;
+  }
   .cal .post.p1 { background: var(--p1-tint); border-color: var(--p1); }
   .cal .post.p1 .pname { color: var(--p1); }
   .cal .post.p2 { background: var(--p2-tint); border-color: var(--p2); }
@@ -382,6 +386,8 @@
     </div>
     <h3 class="mdate" id="m-date"></h3>
 
+    <img id="m-img" style="display:none; width:100%; max-height:340px; object-fit:cover; border-radius:6px; margin-bottom:14px;" alt="" />
+
     <label>pillar</label>
     <div class="pillar-pick" id="m-pillar"></div>
 
@@ -475,12 +481,14 @@ function renderCal() {
     const posts = dayEntries.map(e => {
       const px = pIdx[e.pillar] || 1;
       const titleBit = e.title ? `<div class="ptitle">${escape(e.title)}</div>` : '';
+      const thumbBit = e.image ? `<img class="pthumb" src="${escape(e.image)}" alt="" loading="lazy">` : '';
       // on phone, show short label; on desktop, show full pillar name
       const full = pName(e.pillar);
       const short = e.pillar; // "01" etc as fallback for tiny screens
       return `<div class="post p${px}" data-id="${escape(e.id)}">
         <div class="pname"><span class="pname-text">${full}</span><span class="pname-short">${short}</span></div>
         ${titleBit}
+        ${thumbBit}
       </div>`;
     }).join('');
     cells += `<div class="d ${isToday ? 'today' : ''}" data-date="${iso}">
@@ -509,6 +517,9 @@ function openEdit(entry) {
   $('#m-pillar').innerHTML = PILLARS.map(p => `
     <button data-p="${p.key}" class="${p.key === state.editPillar ? 'on' : ''}" ${editable ? '' : 'disabled style="cursor:default;"'}>${p.name}</button>
   `).join('');
+  const img = $('#m-img');
+  if (entry?.image) { img.src = entry.image; img.style.display = 'block'; }
+  else { img.removeAttribute('src'); img.style.display = 'none'; }
   $('#m-title').value = entry?.title || '';
   $('#m-note').value = entry?.note || '';
   $('#m-title').readOnly = !editable;
