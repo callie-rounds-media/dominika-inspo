@@ -172,6 +172,18 @@
   }
   .sync button:hover { background: var(--terracotta); border-color: var(--terracotta); }
 
+  /* Add-confirmation — loud, honest feedback after each save */
+  .confirm {
+    display: none; align-items: flex-start; gap: 10px;
+    width: 100%; box-sizing: border-box;
+    margin: 0 0 22px; padding: 14px 16px; border-radius: 5px;
+    font-size: 15px; font-weight: 500; line-height: 1.45;
+  }
+  .confirm.show { display: flex; }
+  .confirm.good { background: rgba(107,122,79,.14); border: 1px solid rgba(107,122,79,.55); color: var(--terracotta); }
+  .confirm.bad  { background: rgba(168,84,54,.12); border: 1px solid rgba(168,84,54,.5); color: #9a4f33; }
+  .confirm .ic { font-size: 17px; line-height: 1.3; flex: 0 0 auto; }
+
   /* Filter tabs */
   .tabs {
     display: flex;
@@ -512,6 +524,8 @@
     <div class="err" id="err"></div>
   </form>
 
+  <div class="confirm" id="confirm"></div>
+
   <div class="boards" id="boards">
     <div class="loading">loading…</div>
   </div>
@@ -561,12 +575,13 @@ const CALLIE_EMAIL = 'callierounds@gmail.com';
 function renderSync() {
   const el = $('#sync');
   const n = pendingCount();
+  // cancel any pending fade so a later state can't be clobbered by it
+  clearTimeout(renderSync._t);
   if (n === 0) {
     el.className = 'sync show ok';
     $('#sync-msg').innerHTML = `all your pins are saved ✓`;
     $('#send-pins').style.display = 'none';
     // fade the confirmation after a moment so it isn't permanent
-    clearTimeout(renderSync._t);
     renderSync._t = setTimeout(() => { el.className = 'sync'; }, 4000);
     return;
   }
@@ -656,18 +671,39 @@ $('#add-form').addEventListener('submit', async e => {
   state.items.unshift(item);
   renderBoards();
   $('#url').value = ''; $('#note').value = '';
+  $('#confirm').className = 'confirm';
 
   try { new BroadcastChannel('dominika-inspo').postMessage({ type: 'item-added', item }); } catch {}
 
   addItem(item).then(({ synced }) => {
-    btn.textContent = synced ? 'added ✓' : 'saved on device';
-    // either way, reflect the true queue state in the status bar so a failed
-    // sync is visible immediately instead of looking like a success.
+    if (synced) {
+      // truly committed to the server → Callie will see it
+      btn.textContent = 'saved ✓';
+      showConfirm(true, 'saved! callie can see this one now.');
+    } else {
+      // did NOT reach the server. Don't pretend: drop it from the board so the
+      // board only ever shows what's really saved, and point her at the one
+      // button that gets it to callie anyway.
+      state.items = state.items.filter(x => x.id !== item.id);
+      renderBoards();
+      btn.textContent = "couldn't save";
+      showConfirm(false, "couldn't save that one just now — tap the green button at the top to send it straight to callie.");
+      $('#sync').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
     renderSync();
   }).finally(() => {
-    setTimeout(() => { btn.textContent = 'add reference'; btn.disabled = false; }, 1500);
+    setTimeout(() => { btn.textContent = 'add reference'; btn.disabled = false; }, 1800);
   });
 });
+
+// loud, honest confirmation under the form
+function showConfirm(good, msg) {
+  const c = $('#confirm');
+  c.className = 'confirm show ' + (good ? 'good' : 'bad');
+  c.innerHTML = `<span class="ic">${good ? '✓' : '⚠'}</span><span>${msg}</span>`;
+  clearTimeout(showConfirm._t);
+  if (good) showConfirm._t = setTimeout(() => { c.className = 'confirm'; }, 5000);
+}
 
 load();
 </script>
