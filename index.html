@@ -200,6 +200,15 @@
   .savebar.fail { border-color: rgba(168,84,54,.5); background: rgba(168,84,54,.1); }
   .savebar.fail .lbl { color: #9a4f33; }
   .savebar.fail .fill { width: 100%; background: #a85436; }
+  /* on failure, the action button sits right inside the message */
+  .savebar #save-send {
+    display: none; width: 100%; margin-top: 13px;
+    font: inherit; font-size: 16px; font-weight: 600; letter-spacing: .02em;
+    cursor: pointer; background: var(--ink); color: var(--bone);
+    border: 1px solid var(--ink); border-radius: 4px; padding: 15px;
+  }
+  .savebar.fail #save-send { display: block; }
+  .savebar #save-send:hover { background: var(--terracotta); border-color: var(--terracotta); }
 
   /* Filter tabs */
   .tabs {
@@ -544,6 +553,7 @@
   <div class="savebar" id="savebar">
     <div class="lbl" id="save-lbl"></div>
     <div class="track"><div class="fill"></div></div>
+    <button type="button" id="save-send">send it to callie &nbsp;→</button>
   </div>
 
   <div class="boards" id="boards">
@@ -622,9 +632,9 @@ async function doFlush() {
   renderSync();
 }
 
-// The one button. Opens her mail app with every pin already filled in,
+// Opens her mail app with every not-yet-saved pin already filled in,
 // addressed to Callie. She just hits send. Cannot be blocked, no copying.
-$('#send-pins').addEventListener('click', () => {
+function sendPinsToCallie() {
   const items = pendingItems();
   if (!items.length) { renderSync(); return; }
   const lines = items.map((i, k) =>
@@ -635,7 +645,9 @@ $('#send-pins').addEventListener('click', () => {
     `hi! here are the inspiration pins from my board:\n\n${lines}\n\n— sent from the inspiration board`;
   window.location.href =
     `mailto:${CALLIE_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-});
+}
+$('#send-pins').addEventListener('click', sendPinsToCallie);
+$('#save-send').addEventListener('click', sendPinsToCallie);
 
 // keep trying to sync silently whenever the tab comes back / on a slow poll
 window.addEventListener('focus', doFlush);
@@ -711,9 +723,8 @@ $('#add-form').addEventListener('submit', async e => {
       // phone and one tap from callie, so it is NOT lost.
       state.items = state.items.filter(x => x.id !== item.id);
       renderBoards();
-      btn.textContent = "couldn't save";
-      setSave('fail', "<span class=\"ic\">⚠</span><span>couldn't save that one yet — it's safe on your phone. tap the green button at the top to send it straight to callie.</span>");
-      $('#sync').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      btn.textContent = "didn't save";
+      setSave('fail', '<span class="ic">⚠</span><span>didn\'t save. tap the button to send it to callie.</span>');
     }
     renderSync();
   }).finally(() => {
