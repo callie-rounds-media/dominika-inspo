@@ -510,8 +510,7 @@
   <div class="sync" id="sync">
     <span class="dot"></span>
     <span class="msg" id="sync-msg"></span>
-    <button type="button" class="ghost" id="sync-now">sync now</button>
-    <button type="button" id="copy-pins">copy my pins</button>
+    <button type="button" id="send-pins">send my pins to callie</button>
   </div>
 
   <div class="boards" id="boards">
@@ -520,7 +519,7 @@
 </div>
 
 <script type="module">
-import { addItem, flushQueue, pendingCount, pendingAsText } from './lib/sync.js';
+import { addItem, flushQueue, pendingCount, pendingItems } from './lib/sync.js';
 
 const DATA = './data/items.json';
 const BOARDS = [
@@ -551,59 +550,60 @@ function renderBoards() {
 }
 
 // ---- sync status -------------------------------------------------------
-// Surfaces the local queue so a stuck submission can never look like a
-// success. Auto-syncs aggressively; gives a one-tap manual retry and a
-// copy-everything escape hatch if her browser/network is blocking the proxy.
+// The save can silently fail when HER browser is blocked from reaching our
+// server. So two things: (1) we keep trying to sync silently in the
+// background — focus, visibility, a slow poll — so in the common case her
+// pins flush themselves and she does NOTHING. (2) If anything is still stuck,
+// we show ONE button that hands her pins to Callie through her phone's own
+// mail app: a native action that can't be network-blocked, with every pin
+// already written into the email. No links to copy, nothing that can fail.
+const CALLIE_EMAIL = 'caliroundspartnerships@gmail.com';
+
 function renderSync() {
   const el = $('#sync');
   const n = pendingCount();
   if (n === 0) {
     el.className = 'sync show ok';
-    $('#sync-msg').innerHTML = `<b>all saved.</b> everything on this device is synced ✓`;
-    $('#sync-now').style.display = 'none';
-    $('#copy-pins').style.display = 'none';
-    // fade the "all saved" confirmation after a moment so it isn't permanent
+    $('#sync-msg').innerHTML = `all your pins are saved ✓`;
+    $('#send-pins').style.display = 'none';
+    // fade the confirmation after a moment so it isn't permanent
     clearTimeout(renderSync._t);
     renderSync._t = setTimeout(() => { el.className = 'sync'; }, 4000);
     return;
   }
   el.className = 'sync show warn';
   $('#sync-msg').innerHTML =
-    `<b>${n} pin${n === 1 ? '' : 's'} saved on this device, not yet synced.</b> ` +
-    `tap “sync now”. if it won’t clear, tap “copy my pins” and send them to callie.`;
-  $('#sync-now').style.display = '';
-  $('#copy-pins').style.display = '';
+    `${n} of your pin${n === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} still saving. ` +
+    `one tap sends ${n === 1 ? 'it' : 'them'} straight to callie:`;
+  $('#send-pins').style.display = '';
 }
 
 let flushing = false;
 async function doFlush() {
+  // Silent background sync. Never changes the button, never interrupts her.
   if (flushing || pendingCount() === 0) { renderSync(); return; }
   flushing = true;
-  const btn = $('#sync-now');
-  btn.disabled = true; btn.textContent = 'syncing…';
   try { await flushQueue(); } catch {}
   flushing = false;
-  btn.disabled = false; btn.textContent = 'sync now';
   renderSync();
 }
 
-$('#sync-now').addEventListener('click', doFlush);
-$('#copy-pins').addEventListener('click', async () => {
-  const text = pendingAsText();
-  if (!text) { renderSync(); return; }
-  const btn = $('#copy-pins');
-  try {
-    await navigator.clipboard.writeText(text);
-    btn.textContent = 'copied ✓';
-  } catch {
-    // clipboard blocked → drop into a prompt so she can copy manually
-    window.prompt('copy these and send to callie:', text);
-    btn.textContent = 'copy my pins';
-  }
-  setTimeout(() => { btn.textContent = 'copy my pins'; }, 2000);
+// The one button. Opens her mail app with every pin already filled in,
+// addressed to Callie. She just hits send. Cannot be blocked, no copying.
+$('#send-pins').addEventListener('click', () => {
+  const items = pendingItems();
+  if (!items.length) { renderSync(); return; }
+  const lines = items.map((i, k) =>
+    `${k + 1}. ${i.url}${i.note ? `\n   (${i.note})` : ''}  [${i.category}]`
+  ).join('\n\n');
+  const subject = `my inspiration pins (${items.length})`;
+  const body =
+    `hi! here are the inspiration pins from my board:\n\n${lines}\n\n— sent from the inspiration board`;
+  window.location.href =
+    `mailto:${CALLIE_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 });
 
-// re-sync whenever the tab regains focus / becomes visible, plus a slow poll
+// keep trying to sync silently whenever the tab comes back / on a slow poll
 window.addEventListener('focus', doFlush);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) doFlush(); });
 setInterval(doFlush, 20000);
