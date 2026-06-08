@@ -652,12 +652,14 @@ document.querySelector('.cat-chip[data-cat="text"]').classList.add('active');
 $('#add-form').addEventListener('submit', async e => {
   e.preventDefault();
   $('#err').textContent = '';
-  const url = $('#url').value.trim();
+  let url = $('#url').value.trim();
   const note = $('#note').value.trim();
   const cat = state.selectedCat;
   if (!url) { $('#err').textContent = 'paste a link first'; return; }
   if (!cat) { $('#err').textContent = 'pick a category'; return; }
-  try { new URL(url); } catch { $('#err').textContent = 'not a valid url'; return; }
+  // be forgiving: a pasted link without https:// still works
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  try { new URL(url); } catch { $('#err').textContent = 'hmm, that doesn’t look like a link — try copying it again'; return; }
 
   const btn = $('#submit-btn');
   btn.disabled = true; btn.textContent = 'saving…';
