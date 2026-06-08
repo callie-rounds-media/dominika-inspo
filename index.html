@@ -726,6 +726,8 @@ function setSave(state, html) {
   const el = $('#savebar');
   el.className = 'savebar show ' + state;
   $('#save-lbl').innerHTML = html;
+  // make sure she actually sees it happen, wherever she is on the page
+  if (state === 'saving') el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   clearTimeout(setSave._t);
   if (state === 'done') setSave._t = setTimeout(() => { el.className = 'savebar'; }, 5000);
 }
