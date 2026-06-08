@@ -140,6 +140,38 @@
   .add .submit:disabled { opacity: 0.5; cursor: not-allowed; }
   .add .err { color: var(--terracotta); font-size: 12px; grid-column: 1 / -1; }
 
+  /* Sync status — makes a stuck queue visible instead of silent */
+  .sync {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 0 0 22px;
+    padding: 12px 16px;
+    border: 1px solid var(--ink-line);
+    border-radius: 2px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .sync.show { display: flex; }
+  .sync.ok { border-color: rgba(107, 122, 79, 0.5); color: var(--terracotta); }
+  .sync.warn { border-color: rgba(44, 40, 32, 0.4); color: var(--ink); }
+  .sync .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor; flex: 0 0 auto;
+  }
+  .sync .msg { flex: 1 1 auto; min-width: 160px; }
+  .sync .msg b { font-weight: 500; }
+  .sync button {
+    font: inherit; font-size: 12px; cursor: pointer;
+    background: var(--ink); color: var(--bone);
+    border: 1px solid var(--ink); border-radius: 2px;
+    padding: 7px 14px; letter-spacing: 0.02em;
+  }
+  .sync button.ghost { background: transparent; color: var(--ink); }
+  .sync button:hover { background: var(--terracotta); border-color: var(--terracotta); color: var(--bone); }
+  .sync button:disabled { opacity: 0.5; cursor: default; }
+
   /* Filter tabs */
   .tabs {
     display: flex;
@@ -475,13 +507,20 @@
     <div class="err" id="err"></div>
   </form>
 
+  <div class="sync" id="sync">
+    <span class="dot"></span>
+    <span class="msg" id="sync-msg"></span>
+    <button type="button" class="ghost" id="sync-now">sync now</button>
+    <button type="button" id="copy-pins">copy my pins</button>
+  </div>
+
   <div class="boards" id="boards">
     <div class="loading">loading…</div>
   </div>
 </div>
 
 <script type="module">
-import { addItem, flushQueue } from './lib/sync.js';
+import { addItem, flushQueue, pendingCount, pendingAsText } from './lib/sync.js';
 
 const DATA = './data/items.json';
 const BOARDS = [
@@ -511,6 +550,64 @@ function renderBoards() {
   }).join('');
 }
 
+// ---- sync status -------------------------------------------------------
+// Surfaces the local queue so a stuck submission can never look like a
+// success. Auto-syncs aggressively; gives a one-tap manual retry and a
+// copy-everything escape hatch if her browser/network is blocking the proxy.
+function renderSync() {
+  const el = $('#sync');
+  const n = pendingCount();
+  if (n === 0) {
+    el.className = 'sync show ok';
+    $('#sync-msg').innerHTML = `<b>all saved.</b> everything on this device is synced ✓`;
+    $('#sync-now').style.display = 'none';
+    $('#copy-pins').style.display = 'none';
+    // fade the "all saved" confirmation after a moment so it isn't permanent
+    clearTimeout(renderSync._t);
+    renderSync._t = setTimeout(() => { el.className = 'sync'; }, 4000);
+    return;
+  }
+  el.className = 'sync show warn';
+  $('#sync-msg').innerHTML =
+    `<b>${n} pin${n === 1 ? '' : 's'} saved on this device, not yet synced.</b> ` +
+    `tap “sync now”. if it won’t clear, tap “copy my pins” and send them to callie.`;
+  $('#sync-now').style.display = '';
+  $('#copy-pins').style.display = '';
+}
+
+let flushing = false;
+async function doFlush() {
+  if (flushing || pendingCount() === 0) { renderSync(); return; }
+  flushing = true;
+  const btn = $('#sync-now');
+  btn.disabled = true; btn.textContent = 'syncing…';
+  try { await flushQueue(); } catch {}
+  flushing = false;
+  btn.disabled = false; btn.textContent = 'sync now';
+  renderSync();
+}
+
+$('#sync-now').addEventListener('click', doFlush);
+$('#copy-pins').addEventListener('click', async () => {
+  const text = pendingAsText();
+  if (!text) { renderSync(); return; }
+  const btn = $('#copy-pins');
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = 'copied ✓';
+  } catch {
+    // clipboard blocked → drop into a prompt so she can copy manually
+    window.prompt('copy these and send to callie:', text);
+    btn.textContent = 'copy my pins';
+  }
+  setTimeout(() => { btn.textContent = 'copy my pins'; }, 2000);
+});
+
+// re-sync whenever the tab regains focus / becomes visible, plus a slow poll
+window.addEventListener('focus', doFlush);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) doFlush(); });
+setInterval(doFlush, 20000);
+
 async function load() {
   try {
     const r = await fetch(DATA + '?t=' + Date.now(), { cache: 'no-store' });
@@ -520,8 +617,9 @@ async function load() {
   } catch {
     $('#boards').innerHTML = `<div class="empty">couldn't load</div>`;
   }
-  // best-effort flush any queued submissions from previous sessions
-  flushQueue();
+  // best-effort flush any queued submissions from previous sessions, then
+  // show the result so nothing is ever silently stuck.
+  await doFlush();
 }
 
 // chips
@@ -563,13 +661,10 @@ $('#add-form').addEventListener('submit', async e => {
   try { new BroadcastChannel('dominika-inspo').postMessage({ type: 'item-added', item }); } catch {}
 
   addItem(item).then(({ synced }) => {
-    if (synced) {
-      btn.textContent = 'added ✓';
-    } else {
-      // server didn't accept it (worker down, network blip). The item is
-      // queued in localStorage and will auto-flush on next page load.
-      btn.textContent = 'saving…';
-    }
+    btn.textContent = synced ? 'added ✓' : 'saved on device';
+    // either way, reflect the true queue state in the status bar so a failed
+    // sync is visible immediately instead of looking like a success.
+    renderSync();
   }).finally(() => {
     setTimeout(() => { btn.textContent = 'add reference'; btn.disabled = false; }, 1500);
   });
