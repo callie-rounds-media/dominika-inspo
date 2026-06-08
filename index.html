@@ -172,17 +172,34 @@
   }
   .sync button:hover { background: var(--terracotta); border-color: var(--terracotta); }
 
-  /* Add-confirmation — loud, honest feedback after each save */
-  .confirm {
-    display: none; align-items: flex-start; gap: 10px;
-    width: 100%; box-sizing: border-box;
-    margin: 0 0 22px; padding: 14px 16px; border-radius: 5px;
-    font-size: 15px; font-weight: 500; line-height: 1.45;
+  /* Saving bar — visible saving -> saved / couldn't-save progress.
+     She watches it happen and never walks away unsure. */
+  .savebar {
+    display: none; width: 100%; box-sizing: border-box;
+    margin: 0 0 22px; padding: 15px 16px; border-radius: 5px;
+    border: 1px solid var(--ink-line); background: rgba(44,40,32,.03);
   }
-  .confirm.show { display: flex; }
-  .confirm.good { background: rgba(107,122,79,.14); border: 1px solid rgba(107,122,79,.55); color: var(--terracotta); }
-  .confirm.bad  { background: rgba(168,84,54,.12); border: 1px solid rgba(168,84,54,.5); color: #9a4f33; }
-  .confirm .ic { font-size: 17px; line-height: 1.3; flex: 0 0 auto; }
+  .savebar.show { display: block; }
+  .savebar .lbl {
+    display: flex; align-items: flex-start; gap: 9px;
+    font-size: 15px; font-weight: 500; line-height: 1.45; margin-bottom: 11px;
+  }
+  .savebar .lbl .ic { flex: 0 0 auto; font-size: 16px; }
+  .savebar .track { height: 8px; border-radius: 6px; background: rgba(44,40,32,.1); overflow: hidden; }
+  .savebar .fill { height: 100%; width: 0%; border-radius: 6px; background: var(--green); transition: width .35s ease; }
+  /* saving: indeterminate shimmer */
+  .savebar.saving .track {
+    background: linear-gradient(90deg, rgba(107,122,79,.18) 25%, rgba(107,122,79,.5) 50%, rgba(107,122,79,.18) 75%);
+    background-size: 200% 100%; animation: shimmer 1.1s linear infinite;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .savebar.saving .fill { width: 0; }
+  .savebar.done { border-color: rgba(107,122,79,.55); background: rgba(107,122,79,.1); }
+  .savebar.done .lbl { color: var(--terracotta); }
+  .savebar.done .fill { width: 100%; background: var(--green); }
+  .savebar.fail { border-color: rgba(168,84,54,.5); background: rgba(168,84,54,.1); }
+  .savebar.fail .lbl { color: #9a4f33; }
+  .savebar.fail .fill { width: 100%; background: #a85436; }
 
   /* Filter tabs */
   .tabs {
@@ -524,7 +541,10 @@
     <div class="err" id="err"></div>
   </form>
 
-  <div class="confirm" id="confirm"></div>
+  <div class="savebar" id="savebar">
+    <div class="lbl" id="save-lbl"></div>
+    <div class="track"><div class="fill"></div></div>
+  </div>
 
   <div class="boards" id="boards">
     <div class="loading">loading…</div>
@@ -673,23 +693,26 @@ $('#add-form').addEventListener('submit', async e => {
   state.items.unshift(item);
   renderBoards();
   $('#url').value = ''; $('#note').value = '';
-  $('#confirm').className = 'confirm';
+
+  // show the saving bar immediately so she watches it happen
+  setSave('saving', '<span class="ic">⏳</span><span>saving your pin…</span>');
 
   try { new BroadcastChannel('dominika-inspo').postMessage({ type: 'item-added', item }); } catch {}
 
   addItem(item).then(({ synced }) => {
     if (synced) {
-      // truly committed to the server → Callie will see it
+      // truly committed to the server → Callie will see it, and it's now in
+      // GitHub history permanently (recoverable even if ever deleted)
       btn.textContent = 'saved ✓';
-      showConfirm(true, 'saved! callie can see this one now.');
+      setSave('done', '<span class="ic">✓</span><span>saved! callie can see this one now.</span>');
     } else {
       // did NOT reach the server. Don't pretend: drop it from the board so the
-      // board only ever shows what's really saved, and point her at the one
-      // button that gets it to callie anyway.
+      // board only ever shows what's really saved. It's still held on this
+      // phone and one tap from callie, so it is NOT lost.
       state.items = state.items.filter(x => x.id !== item.id);
       renderBoards();
       btn.textContent = "couldn't save";
-      showConfirm(false, "couldn't save that one just now — tap the green button at the top to send it straight to callie.");
+      setSave('fail', "<span class=\"ic\">⚠</span><span>couldn't save that one yet — it's safe on your phone. tap the green button at the top to send it straight to callie.</span>");
       $('#sync').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     renderSync();
@@ -698,13 +721,13 @@ $('#add-form').addEventListener('submit', async e => {
   });
 });
 
-// loud, honest confirmation under the form
-function showConfirm(good, msg) {
-  const c = $('#confirm');
-  c.className = 'confirm show ' + (good ? 'good' : 'bad');
-  c.innerHTML = `<span class="ic">${good ? '✓' : '⚠'}</span><span>${msg}</span>`;
-  clearTimeout(showConfirm._t);
-  if (good) showConfirm._t = setTimeout(() => { c.className = 'confirm'; }, 5000);
+// visible saving -> saved / couldn't-save bar
+function setSave(state, html) {
+  const el = $('#savebar');
+  el.className = 'savebar show ' + state;
+  $('#save-lbl').innerHTML = html;
+  clearTimeout(setSave._t);
+  if (state === 'done') setSave._t = setTimeout(() => { el.className = 'savebar'; }, 5000);
 }
 
 load();
