@@ -21,7 +21,7 @@
     --font-body: 'Hanken Grotesk', system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
+  html, body { margin: 0; padding: 0; overflow-x: hidden; }
   body {
     background: var(--bone);
     color: var(--ink);
@@ -143,34 +143,34 @@
   /* Sync status — makes a stuck queue visible instead of silent */
   .sync {
     display: none;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin: 0 0 22px;
-    padding: 12px 16px;
-    border: 1px solid var(--ink-line);
-    border-radius: 2px;
-    font-size: 13px;
-    color: var(--ink-soft);
+    flex-direction: column;
+    gap: 13px;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 4px 0 26px;
+    padding: 17px 18px;
+    border: 1px solid rgba(107, 122, 79, 0.55);
+    border-radius: 5px;
+    background: rgba(107, 122, 79, 0.08);
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--ink);
   }
   .sync.show { display: flex; }
-  .sync.ok { border-color: rgba(107, 122, 79, 0.5); color: var(--terracotta); }
-  .sync.warn { border-color: rgba(44, 40, 32, 0.4); color: var(--ink); }
+  .sync .topline { display: flex; align-items: flex-start; gap: 10px; }
   .sync .dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: currentColor; flex: 0 0 auto;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--terracotta); margin-top: 6px; flex: 0 0 auto;
   }
-  .sync .msg { flex: 1 1 auto; min-width: 160px; }
-  .sync .msg b { font-weight: 500; }
+  .sync .msg { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+  .sync .msg b { font-weight: 600; }
   .sync button {
-    font: inherit; font-size: 12px; cursor: pointer;
-    background: var(--ink); color: var(--bone);
-    border: 1px solid var(--ink); border-radius: 2px;
-    padding: 7px 14px; letter-spacing: 0.02em;
+    width: 100%;
+    font: inherit; font-size: 16px; font-weight: 600; letter-spacing: 0.02em;
+    cursor: pointer; background: var(--ink); color: var(--bone);
+    border: 1px solid var(--ink); border-radius: 4px; padding: 15px;
   }
-  .sync button.ghost { background: transparent; color: var(--ink); }
-  .sync button:hover { background: var(--terracotta); border-color: var(--terracotta); color: var(--bone); }
-  .sync button:disabled { opacity: 0.5; cursor: default; }
+  .sync button:hover { background: var(--terracotta); border-color: var(--terracotta); }
 
   /* Filter tabs */
   .tabs {
@@ -485,6 +485,11 @@
   </header>
   <div class="swatch-strip" aria-hidden="true"></div>
 
+  <div class="sync" id="sync">
+    <div class="topline"><span class="dot"></span><span class="msg" id="sync-msg"></span></div>
+    <button type="button" id="send-pins">send my pins to callie&nbsp;&nbsp;→</button>
+  </div>
+
   <form class="add" id="add-form" autocomplete="off">
     <div class="row">
       <label for="url">link</label>
@@ -506,12 +511,6 @@
     </div>
     <div class="err" id="err"></div>
   </form>
-
-  <div class="sync" id="sync">
-    <span class="dot"></span>
-    <span class="msg" id="sync-msg"></span>
-    <button type="button" id="send-pins">send my pins to callie</button>
-  </div>
 
   <div class="boards" id="boards">
     <div class="loading">loading…</div>
